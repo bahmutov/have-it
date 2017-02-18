@@ -1,6 +1,8 @@
 'use strict'
 
 const rootFolder = process.env.HOME
+
+const debug = require('debug')('have-it')
 const path = require('path')
 const fs = require('fs')
 const R = require('ramda')
@@ -54,8 +56,8 @@ function findModule (name) {
 
 function print (modules) {
   const different = R.uniqBy(R.prop('version'))(modules)
-  console.log('%d different version', different.length)
-  console.log(different)
+  debug('%d different version', different.length)
+  debug(R.project(['version'], different))
 }
 
 function installMain (p) {
@@ -80,11 +82,11 @@ function installMain (p) {
   fs.writeFileSync(filename, json, 'utf8')
 }
 
-findModule('debug')
-  .then(R.tap(print))
-  .then(R.last)
-  .then(installMain)
+function findAndInstall (name, version) {
+  return findModule(name, version)
+    .then(R.tap(print))
+    .then(R.last)
+    .then(installMain)
+}
 
-// const existingPath = '/Users/gleb/git/training/node/foo'
-// const newPath = '/Users/gleb/git/training/node/have-it/node_modules/foo'
-// fs.linkSync(existingPath, newPath)
+module.exports = findAndInstall

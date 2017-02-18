@@ -8,6 +8,13 @@
 [![semantic-release][semantic-image] ][semantic-url]
 [![js-standard-style][standard-image]][standard-url]
 
+## Related projects
+
+* [copi](https://github.com/bahmutov/copi) - physically copies found package
+  into this folder
+* [local-npm](https://github.com/nolanlawson/local-npm) - Local and
+  offline-first npm mirror (unmaintained)
+
 ### Small print
 
 Author: Gleb Bahmutov &lt;gleb.bahmutov@gmail.com&gt; &copy; 2017
