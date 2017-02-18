@@ -74,5 +74,11 @@
     "nsp": "2.6.2",
     "pre-git": "3.13.0",
     "standard": "8.6.0"
+  },
+  "dependencies": {
+    "execa": "0.6.0",
+    "mkdirp": "0.5.1",
+    "ramda": "0.23.0",
+    "semver": "5.3.0"
   }
 }
