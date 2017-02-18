@@ -28,8 +28,13 @@
   },
   "files": [
     "src/*.js",
-    "!src/*-spec.js"
+    "!src/*-spec.js",
+    "bin"
   ],
+  "bin": {
+    "have-it": "bin/have-it.js",
+    "have": "bin/have-it.js"
+  },
   "homepage": "https://github.com/bahmutov/have-it#readme",
   "keywords": [
     "fast",
@@ -52,7 +57,7 @@
     "deps": "deps-ok && dependency-check .",
     "issues": "git-issues",
     "license": "license-checker --production --onlyunknown --csv",
-    "lint": "standard --verbose --fix src/*.js",
+    "lint": "standard --verbose --fix src/*.js bin/*.js",
     "pretest": "npm run lint",
     "secure": "nsp check",
     "size": "t=\"$(npm pack .)\"; wc -c \"${t}\"; tar tvf \"${t}\"; rm \"${t}\";",
