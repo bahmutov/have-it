@@ -13,6 +13,30 @@ const la = require('lazy-ass')
 const is = require('check-more-types')
 const glob = require('glob-all')
 
+function mkdir (name) {
+  return new Promise((resolve, reject) => {
+    mkdirp(name, {}, (err) => {
+      if (err) {
+        console.error(err)
+        return reject(err)
+      }
+      resolve()
+    })
+  })
+}
+
+function saveJSON (filename, json) {
+  return new Promise((resolve, reject) => {
+    const text = JSON.stringify(json, null, 2)
+    fs.writeFile(filename, text, 'utf8', (err) => {
+      if (err) {
+        return reject(err)
+      }
+      resolve()
+    })
+  })
+}
+
 function getVersion (folder) {
   const packageFilename = path.join(folder, 'package.json')
   return new Promise((resolve, reject) => {
@@ -22,12 +46,13 @@ function getVersion (folder) {
           return reject(err)
         }
         const json = JSON.parse(s)
-        resolve({
+        const main = json.main || 'index.js'
+        return resolve({
           folder: folder,
           filename: packageFilename,
           name: json.name,
           version: json.version,
-          main: path.join(folder, json.main)
+          main: path.join(folder, main)
         })
       })
     } catch (err) {
@@ -37,7 +62,7 @@ function getVersion (folder) {
 }
 
 function getVersionSafe (folder) {
-  return getVersion(folder).catch(() => undefined)
+  return getVersion(folder)
 }
 
 function byVersion (a, b) {
@@ -87,23 +112,30 @@ function installMain (p) {
     return
   }
   const destination = path.join(process.cwd(), 'node_modules', p.name)
-  console.log('installing', p)
-  console.log('as', destination)
+  debug('installing', p)
+  debug('as', destination)
 
-  mkdirp.sync(destination)
-  const pkg = {
-    name: p.name,
-    main: p.main,
-    version: p.version,
-    description: 'fake module created by \'have-it\' pointing at existing module'
-  }
-  const filename = path.join(destination, 'package.json')
-  const json = JSON.stringify(pkg, null, 2)
-  fs.writeFileSync(filename, json, 'utf8')
+  return mkdir(destination)
+    .then(() => {
+      const pkg = {
+        name: p.name,
+        main: p.main,
+        version: p.version,
+        description: 'fake module created by \'have-it\' pointing at existing module'
+      }
+      const filename = path.join(destination, 'package.json')
+      return saveJSON(filename, pkg)
+    })
 }
 
 function installModules (found) {
-  R.values(found).forEach(installMain)
+  la(is.object(found), 'expected found modules object', found)
+  const list = R.values(found)
+
+  return Promise.all(list.map(installMain))
+    .then(() => {
+      console.log('installed %d module(s)', list.length)
+    })
 }
 
 function findAndInstall (names) {
@@ -118,5 +150,5 @@ function findAndInstall (names) {
 
 module.exports = findAndInstall
 
-// findModules(['lodash', 'debug', 'ramda'])
+// findAndInstall(['lodash', 'debug'])
 //   .then(console.log)

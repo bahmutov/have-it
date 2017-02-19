@@ -12,8 +12,8 @@ function toInstall () {
 if (!name) {
   // installing all packages from package.json
   const list = toInstall()
-  const installed = Promise.all(list.map(findAndInstall))
-  installed.then(() => console.log('all installed'))
+  findAndInstall(list)
+    .then(() => console.log('all installed'))
 } else {
   console.log('have-it %s', name)
   findAndInstall(name)
