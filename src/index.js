@@ -7,8 +7,11 @@ const path = require('path')
 const fs = require('fs')
 const R = require('ramda')
 const semver = require('semver')
-const execa = require('execa')
+// const execa = require('execa')
 const mkdirp = require('mkdirp')
+const la = require('lazy-ass')
+const is = require('check-more-types')
+const glob = require('glob-all')
 
 function getVersion (folder) {
   const packageFilename = path.join(folder, 'package.json')
@@ -41,17 +44,34 @@ function byVersion (a, b) {
   return semver.compare(a.version, b.version)
 }
 
-function folderSearch (name) {
-  const args = [rootFolder, '-maxdepth', '4', '-type', 'd', '-name', name]
-  return execa('find', args).then(result => result.stdout.split('\n'))
-}
-function findModule (name) {
-  const fullLine = `node_modules/${name}`
-  return folderSearch(name)
-    .then(lines => lines.filter(line => line.includes(fullLine)))
-    .then(folders => Promise.all(folders.map(getVersionSafe)))
+// function folderSearch (name) {
+//   const args = [rootFolder, '-maxdepth', '4', '-type', 'd', '-name', name]
+//   return execa('find', args).then(result => result.stdout.split('\n'))
+// }
+
+// function findModule (name) {
+//   const fullLine = `node_modules/${name}`
+//   return folderSearch(name)
+//     .then(lines => lines.filter(line => line.includes(fullLine)))
+//     .then(folders => Promise.all(folders.map(getVersionSafe)))
+//     .then(R.filter(R.is(Object)))
+//     .then(R.sort(byVersion))
+// }
+
+const latestVersion = R.pipe(
+  R.sort(byVersion),
+  R.last
+)
+
+function findModules (names) {
+  la(is.strings(names), 'expected names', names)
+  const searches = names.map(name =>
+    `${rootFolder}/git/*/node_modules/${name}`)
+  const folders = glob.sync(searches)
+  return Promise.all(folders.map(getVersionSafe))
     .then(R.filter(R.is(Object)))
-    .then(R.sort(byVersion))
+    .then(R.groupBy(R.prop('name')))
+    .then(R.mapObjIndexed(latestVersion))
 }
 
 function print (modules) {
@@ -75,18 +95,28 @@ function installMain (p) {
     name: p.name,
     main: p.main,
     version: p.version,
-    description: 'fake module created by "have-it" pointing at existing module'
+    description: 'fake module created by \'have-it\' pointing at existing module'
   }
   const filename = path.join(destination, 'package.json')
   const json = JSON.stringify(pkg, null, 2)
   fs.writeFileSync(filename, json, 'utf8')
 }
 
-function findAndInstall (name, version) {
-  return findModule(name, version)
+function installModules (found) {
+  R.values(found).forEach(installMain)
+}
+
+function findAndInstall (names) {
+  if (is.string(names)) {
+    names = [names]
+  }
+
+  return findModules(names)
     .then(R.tap(print))
-    .then(R.last)
-    .then(installMain)
+    .then(installModules)
 }
 
 module.exports = findAndInstall
+
+// findModules(['lodash', 'debug', 'ramda'])
+//   .then(console.log)
