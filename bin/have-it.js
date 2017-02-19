@@ -9,16 +9,18 @@ function toInstall () {
   return Object.keys(pkg.dependencies || {})
 }
 
+function onError (err) {
+  console.error(err)
+  process.exit(1)
+}
+
 if (!name) {
   // installing all packages from package.json
   const list = toInstall()
   findAndInstall(list)
-    .then(() => console.log('all installed'))
+    .catch(onError)
 } else {
   console.log('have-it %s', name)
   findAndInstall(name)
-    .catch(err => {
-      console.error(err)
-      process.exit(1)
-    })
+    .catch(onError)
 }

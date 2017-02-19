@@ -125,7 +125,7 @@ function installMain (p) {
       }
       const filename = path.join(destination, 'package.json')
       return saveJSON(filename, pkg)
-    })
+    }).then(R.always(p))
 }
 
 function installModules (found) {
@@ -135,6 +135,9 @@ function installModules (found) {
   return Promise.all(list.map(installMain))
     .then(() => {
       console.log('installed %d module(s)', list.length)
+      list.forEach(p => {
+        console.log(`${p.name}@${p.version}`)
+      })
     })
 }
 
