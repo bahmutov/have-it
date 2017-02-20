@@ -81,6 +81,12 @@ cat node_modules/lodash/package.json
 Having actual dummy module like above works nicely with Node and its
 module loader.
 
+## Big missing features
+
+* #8 - save installed name version in `package.json`
+* #9 - respect `package.json` versions when installing
+* #10 - allow installing specific version from CLI `have lodash@3.0.0`
+
 ## Related projects
 
 * [copi](https://github.com/bahmutov/copi) - physically copies found package
@@ -92,7 +98,7 @@ module loader.
 
 <details>
   <summary>Why not use `npm link`</summary>
-  <p>`npm link` is cumbersome and links a single package globally</p>
+  <p>`npm link` is cumbersome and links a single package *version* globally</p>
 </details>
 
 <details>
