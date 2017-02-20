@@ -19613,7 +19613,7 @@ function mkdir$1 (name) {
 
 function saveJSON$1 (filename, json) {
   return new Promise((resolve, reject) => {
-    const text = JSON.stringify(json, null, 2);
+    const text = JSON.stringify(json, null, 2) + '\n\n';
     fs$11.writeFile(filename, text, 'utf8', (err) => {
       if (err) {
         return reject(err)
