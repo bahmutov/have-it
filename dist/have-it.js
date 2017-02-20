@@ -16937,7 +16937,9 @@ mkdirP.sync = function sync (p, opts, made) {
 const mkdirp = index$20;
 const fs$5 = require$$0$1;
 const path$11 = require$$0$2;
-const {concat: concat$4} = index$6;
+const {concat: concat$4, difference: difference$3} = index$6;
+const la$1 = index$8;
+const is$4 = checkMoreTypes;
 
 function mkdir$1 (name) {
   return new Promise((resolve, reject) => {
@@ -16988,12 +16990,19 @@ function toInstall$1 () {
   })
 }
 
+function findMissing$1 (names, found) {
+  la$1(is$4.strings(names), 'wrong names', names);
+  la$1(is$4.strings(found), 'wrong installed', found);
+  return difference$3(names, found)
+}
+
 var utils = {
   mkdir: mkdir$1,
   saveJSON: saveJSON$1,
   loadJSON,
   isProduction,
-  toInstall: toInstall$1
+  toInstall: toInstall$1,
+  findMissing: findMissing$1
 };
 
 const rootFolder = process.env.HAVE || process.env.HOME;
@@ -17007,7 +17016,7 @@ const la = index$8;
 const is = checkMoreTypes;
 const glob = globAll_1;
 
-const {mkdir, saveJSON} = utils;
+const {mkdir, saveJSON, findMissing} = utils;
 
 debug('using root folder %s', rootFolder);
 
@@ -17048,34 +17057,36 @@ function byVersion (a, b) {
   return semver.compare(a.version, b.version)
 }
 
-// function folderSearch (name) {
-//   const args = [rootFolder, '-maxdepth', '4', '-type', 'd', '-name', name]
-//   return execa('find', args).then(result => result.stdout.split('\n'))
-// }
-
-// function findModule (name) {
-//   const fullLine = `node_modules/${name}`
-//   return folderSearch(name)
-//     .then(lines => lines.filter(line => line.includes(fullLine)))
-//     .then(folders => Promise.all(folders.map(getVersionSafe)))
-//     .then(R.filter(R.is(Object)))
-//     .then(R.sort(byVersion))
-// }
-
 const latestVersion = R.pipe(
   R.sort(byVersion),
   R.last
 );
 
+// TODO return found / not found modules
 function findModules (names) {
   la(is.strings(names), 'expected names', names);
-  const searches = names.map(name =>
-    `${rootFolder}/git/*/node_modules/${name}`);
+  const searches = names.map(name => `${rootFolder}/*/node_modules/${name}`);
   const folders = glob.sync(searches);
   return Promise.all(folders.map(getVersionSafe))
     .then(R.filter(R.is(Object)))
     .then(R.groupBy(R.prop('name')))
     .then(R.mapObjIndexed(latestVersion))
+    .then(found => {
+      console.log('found', found);
+      const foundNames = R.keys(found);
+      const missing = findMissing(names, foundNames);
+      if (is.not.empty(missing)) {
+        console.log('You do not have %d module(s): %s',
+          missing.length, missing.join(', '));
+        debug('all names to find', names);
+        debug('found names', foundNames);
+        debug('missing names', missing);
+      }
+      return {
+        missing,
+        found
+      }
+    })
 }
 
 function print (modules) {
@@ -17107,8 +17118,9 @@ function installMain (p) {
     }).then(R.always(p))
 }
 
-function installModules (found) {
+function installModules ({found, missing}) {
   la(is.object(found), 'expected found modules object', found);
+  la(is.strings(missing), 'expected list of missing names', missing);
   const list = R.values(found);
 
   return Promise.all(list.map(installMain))

@@ -11,7 +11,7 @@ const la = require('lazy-ass')
 const is = require('check-more-types')
 const glob = require('glob-all')
 
-const {mkdir, saveJSON} = require('./utils')
+const {mkdir, saveJSON, findMissing} = require('./utils')
 
 debug('using root folder %s', rootFolder)
 
@@ -52,39 +52,40 @@ function byVersion (a, b) {
   return semver.compare(a.version, b.version)
 }
 
-// function folderSearch (name) {
-//   const args = [rootFolder, '-maxdepth', '4', '-type', 'd', '-name', name]
-//   return execa('find', args).then(result => result.stdout.split('\n'))
-// }
-
-// function findModule (name) {
-//   const fullLine = `node_modules/${name}`
-//   return folderSearch(name)
-//     .then(lines => lines.filter(line => line.includes(fullLine)))
-//     .then(folders => Promise.all(folders.map(getVersionSafe)))
-//     .then(R.filter(R.is(Object)))
-//     .then(R.sort(byVersion))
-// }
-
 const latestVersion = R.pipe(
   R.sort(byVersion),
   R.last
 )
 
+// TODO return found / not found modules
 function findModules (names) {
   la(is.strings(names), 'expected names', names)
-  const searches = names.map(name =>
-    `${rootFolder}/git/*/node_modules/${name}`)
+  const searches = names.map(name => `${rootFolder}/*/node_modules/${name}`)
   const folders = glob.sync(searches)
   return Promise.all(folders.map(getVersionSafe))
     .then(R.filter(R.is(Object)))
     .then(R.groupBy(R.prop('name')))
     .then(R.mapObjIndexed(latestVersion))
+    .then(found => {
+      const foundNames = R.keys(found)
+      const missing = findMissing(names, foundNames)
+      if (is.not.empty(missing)) {
+        console.log('You do not have %d module(s): %s',
+          missing.length, missing.join(', '))
+        debug('all names to find', names)
+        debug('found names', foundNames)
+        debug('missing names', missing)
+      }
+      return {
+        missing,
+        found
+      }
+    })
 }
 
 function print (modules) {
   const different = R.uniqBy(R.prop('version'))(modules)
-  debug('%d different version', different.length)
+  debug('%d different version(s)', different.length)
   debug(R.project(['version'], different))
 }
 
@@ -111,8 +112,9 @@ function installMain (p) {
     }).then(R.always(p))
 }
 
-function installModules (found) {
+function installModules ({found, missing}) {
   la(is.object(found), 'expected found modules object', found)
+  la(is.strings(missing), 'expected list of missing names', missing)
   const list = R.values(found)
 
   return Promise.all(list.map(installMain))

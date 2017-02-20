@@ -1,7 +1,9 @@
 const mkdirp = require('mkdirp')
 const fs = require('fs')
 const path = require('path')
-const {concat} = require('ramda')
+const {concat, difference} = require('ramda')
+const la = require('lazy-ass')
+const is = require('check-more-types')
 
 function mkdir (name) {
   return new Promise((resolve, reject) => {
@@ -52,10 +54,17 @@ function toInstall () {
   })
 }
 
+function findMissing (names, found) {
+  la(is.strings(names), 'wrong names', names)
+  la(is.strings(found), 'wrong installed', found)
+  return difference(names, found)
+}
+
 module.exports = {
   mkdir,
   saveJSON,
   loadJSON,
   isProduction,
-  toInstall
+  toInstall,
+  findMissing
 }
