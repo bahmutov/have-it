@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 const findAndInstall = require('..')
 const name = process.argv[2]
 const path = require('path')

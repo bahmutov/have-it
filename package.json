@@ -64,7 +64,8 @@
     "test": "npm run unit",
     "unit": "mocha src/*-spec.js",
     "semantic-release": "semantic-release pre && npm publish && semantic-release post",
-    "postinstall": "echo \"have-it: set HAVE environment variable\nto the root folder with most packages\""
+    "postinstall": "echo \"have-it: set HAVE environment variable\nto the root folder with most packages\"",
+    "build": "rollup -c"
   },
   "devDependencies": {
     "ban-sensitive-files": "1.9.0",
@@ -75,6 +76,7 @@
     "mocha": "3.2.0",
     "nsp": "2.6.2",
     "pre-git": "3.13.0",
+    "rollup": "0.41.4",
     "semantic-release": "^6.3.2",
     "simple-commit-message": "3.0.1",
     "standard": "8.6.0"
