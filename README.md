@@ -8,12 +8,87 @@
 [![semantic-release][semantic-image] ][semantic-url]
 [![js-standard-style][standard-image]][standard-url]
 
+If you have lots of local projects each with its own `node_modules` folder
+you probably already have a huge number of installed NPM packages. If you
+are offline or hate waiting, you can "install" a module from another folder
+into the current one using dummy "proxy" module. The setup is almost instant!
+
+Watch in action: [NPM vs Yarn vs have-it](https://www.youtube.com/watch?v=A0o1kC3d_Co)
+
+## Example
+
+1. Install `have-it` globally with `npm i -g have-it`. This tool will be
+  available under `have` and `have-it` names.
+
+2. Set root folder for top level search. For example my projects are usually
+in `$HOME/git` folder. Thus I set `export HAVE=$HOME/git`. By default it
+will use `$HOME` value as the root.
+
+```
+$HOME
+  /git
+    /projectA
+      /node_modules
+    /projectB
+      /node_modules
+    /projectC
+      /node_modules
+```
+
+3. Install something with `have <name>`. For example
+
+```sh
+$ time have lodash
+have-it lodash
+have 1 module(s)
+lodash@4.17.4
+
+real  0m0.240s
+```
+
+For comparison `$ time npm i lodash` prints `real 0m1.909s` - a speed up
+of 10 times!
+
+## Installing dependencies from package.json
+
+Just run `have` to install dependencies from the `package.json` file.
+
+## Fallback
+
+If a module cannot be found locally, `have-it` falls back to using
+`npm install` command.
+
 ## Related projects
 
 * [copi](https://github.com/bahmutov/copi) - physically copies found package
   into this folder
 * [local-npm](https://github.com/nolanlawson/local-npm) - Local and
   offline-first npm mirror (unmaintained)
+
+## FAQ
+
+<details>
+  <summary>Why not use `npm link`</summary>
+  <p>`npm link` is cumbersome and links a single package globally</p>
+</details>
+
+<details>
+  <summary>Why not use symbolic links?</summary>
+  <p>Symbolic links do not work if the linked package needs to load another
+  one of its own packages. For example `debug` requires `ms`. If we
+  link to `debug` package folder, then Node module loader fails to
+  find `ms`</p>
+</details>
+
+<details>
+  <summary>Why not use local NPM proxy?</summary>
+  <p>Because it is (relatively) hard</p>
+</details>
+
+<details>
+  <summary>What happens in production / CI?</summary>
+  <p>Nothing, you just use `npm install` there</p>
+</details>
 
 ### Small print
 
