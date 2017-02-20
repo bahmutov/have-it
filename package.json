@@ -27,13 +27,11 @@
     "node": ">=6"
   },
   "files": [
-    "src/*.js",
-    "!src/*-spec.js",
-    "bin"
+    "dist"
   ],
   "bin": {
-    "have-it": "bin/have-it.js",
-    "have": "bin/have-it.js"
+    "have-it": "dist/have-it.js",
+    "have": "dist/have-it.js"
   },
   "homepage": "https://github.com/bahmutov/have-it#readme",
   "keywords": [
@@ -57,7 +55,7 @@
     "deps": "deps-ok && dependency-check .",
     "issues": "git-issues",
     "license": "license-checker --production --onlyunknown --csv",
-    "lint": "standard --verbose --fix src/*.js bin/*.js",
+    "lint": "standard --verbose --fix *.js src/*.js bin/*.js",
     "pretest": "npm run lint",
     "secure": "nsp check",
     "size": "t=\"$(npm pack .)\"; wc -c \"${t}\"; tar tvf \"${t}\"; rm \"${t}\";",
@@ -65,7 +63,7 @@
     "unit": "mocha src/*-spec.js",
     "semantic-release": "semantic-release pre && npm publish && semantic-release post",
     "postinstall": "echo \"have-it: set HAVE environment variable\nto the root folder with most packages\"",
-    "build": "rollup -c"
+    "build": "rollup -c rollup.config.js"
   },
   "devDependencies": {
     "ban-sensitive-files": "1.9.0",
@@ -77,6 +75,8 @@
     "nsp": "2.6.2",
     "pre-git": "3.13.0",
     "rollup": "0.41.4",
+    "rollup-plugin-commonjs": "7.0.0",
+    "rollup-plugin-node-resolve": "2.0.0",
     "semantic-release": "^6.3.2",
     "simple-commit-message": "3.0.1",
     "standard": "8.6.0"
