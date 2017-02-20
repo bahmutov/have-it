@@ -19,7 +19,7 @@ function mkdir (name) {
 
 function saveJSON (filename, json) {
   return new Promise((resolve, reject) => {
-    const text = JSON.stringify(json, null, 2)
+    const text = JSON.stringify(json, null, 2) + '\n\n'
     fs.writeFile(filename, text, 'utf8', (err) => {
       if (err) {
         return reject(err)

@@ -15,6 +15,9 @@ into the current one using dummy "proxy" module. The setup is almost instant!
 
 Watch in action: [NPM vs Yarn vs have-it](https://www.youtube.com/watch?v=A0o1kC3d_Co)
 
+Quick stats: installing lodash, debug and express takes NPM 5 seconds,
+yarn takes 3 seconds, and `have-it` takes 250ms (0.25 seconds)
+
 ## Example
 
 1. Install `have-it` globally with `npm i -g have-it`. This tool will be
@@ -57,6 +60,26 @@ Just run `have` to install dependencies from the `package.json` file.
 
 If a module cannot be found locally, `have-it` falls back to using
 `npm install` command.
+
+## How does it work?
+
+`have-it` finds the module already installed and then creates in the local
+`node_modules` folder a dummy file that has `main` pointing at the found
+`main` file. For example, if `lodash` was found in folder
+`/Users/gleb/projectX/node_modules/lodash` the local dummy package will be
+
+```
+cat node_modules/lodash/package.json
+{
+  "name": "lodash",
+  "main": "/Users/gleb/projectX/node_modules/lodash/lodash.js",
+  "version": "4.17.4",
+  "description": "fake module created by 'have-it' pointing at existing module"
+}
+```
+
+Having actual dummy module like above works nicely with Node and its
+module loader.
 
 ## Related projects
 
