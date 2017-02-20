@@ -12,6 +12,8 @@ const la = require('lazy-ass')
 const is = require('check-more-types')
 const glob = require('glob-all')
 
+debug('using root folder %s', rootFolder)
+
 function mkdir (name) {
   return new Promise((resolve, reject) => {
     mkdirp(name, {}, (err) => {
@@ -46,12 +48,17 @@ function getVersion (folder) {
         }
         const json = JSON.parse(s)
         const main = json.main || 'index.js'
+        const fullMain = path.isAbsolute(main) ? main : path.join(folder, main)
+        if (!fs.existsSync(fullMain)) {
+          const notFound = new Error(`Cannot find main file ${fullMain}`)
+          return reject(notFound)
+        }
         return resolve({
           folder: folder,
           filename: packageFilename,
           name: json.name,
           version: json.version,
-          main: path.join(folder, main)
+          main: fullMain
         })
       })
     } catch (err) {
