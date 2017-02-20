@@ -7,36 +7,13 @@ const path = require('path')
 const fs = require('fs')
 const R = require('ramda')
 const semver = require('semver')
-const mkdirp = require('mkdirp')
 const la = require('lazy-ass')
 const is = require('check-more-types')
 const glob = require('glob-all')
 
+const {mkdir, saveJSON} = require('./utils')
+
 debug('using root folder %s', rootFolder)
-
-function mkdir (name) {
-  return new Promise((resolve, reject) => {
-    mkdirp(name, {}, (err) => {
-      if (err) {
-        console.error(err)
-        return reject(err)
-      }
-      resolve()
-    })
-  })
-}
-
-function saveJSON (filename, json) {
-  return new Promise((resolve, reject) => {
-    const text = JSON.stringify(json, null, 2)
-    fs.writeFile(filename, text, 'utf8', (err) => {
-      if (err) {
-        return reject(err)
-      }
-      resolve()
-    })
-  })
-}
 
 function getVersion (folder) {
   const packageFilename = path.join(folder, 'package.json')
@@ -151,6 +128,7 @@ function findAndInstall (names) {
   if (is.string(names)) {
     names = [names]
   }
+  la(is.array(names), 'expected list of names to install', names)
 
   return findModules(names)
     .then(R.tap(print))

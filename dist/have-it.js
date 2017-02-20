@@ -13,9 +13,7 @@ var assert = _interopDefault(require('assert'));
 
 var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
-function commonjsRequire () {
-	throw new Error('Dynamic requires are not currently supported by rollup-plugin-commonjs');
-}
+
 
 
 
@@ -7185,7 +7183,7 @@ var _curry2$82 = _curry2$1;
  *      R.path(['a', 'b'], {a: {b: 2}}); //=> 2
  *      R.path(['a', 'b'], {c: {b: 2}}); //=> undefined
  */
-var path$3 = _curry2$82(function path(paths, obj) {
+var path$2 = _curry2$82(function path(paths, obj) {
   var val = obj;
   var idx = 0;
   while (idx < paths.length) {
@@ -7201,7 +7199,7 @@ var path$3 = _curry2$82(function path(paths, obj) {
 var _curry1$39 = _curry1$1;
 var assocPath$2 = assocPath;
 var lens$3 = lens;
-var path$2 = path$3;
+var path$1 = path$2;
 
 
 /**
@@ -7229,7 +7227,7 @@ var path$2 = path$3;
  *      //=> {x: [{y: -2, z: 3}, {y: 4, z: 5}]}
  */
 var lensPath = _curry1$39(function lensPath(p) {
-  return lens$3(path$2(p), assocPath$2(p));
+  return lens$3(path$1(p), assocPath$2(p));
 });
 
 var _curry1$40 = _curry1$1;
@@ -8259,7 +8257,7 @@ var partition = juxt$2([filter$3, reject$3]);
 
 var _curry3$26 = _curry3$1;
 var equals$8 = equals$1;
-var path$5 = path$3;
+var path$4 = path$2;
 
 
 /**
@@ -8287,12 +8285,12 @@ var path$5 = path$3;
  *      R.filter(isFamous, users); //=> [ user1 ]
  */
 var pathEq = _curry3$26(function pathEq(_path, val, obj) {
-  return equals$8(path$5(_path, obj), val);
+  return equals$8(path$4(_path, obj), val);
 });
 
 var _curry3$27 = _curry3$1;
 var defaultTo$2 = defaultTo;
-var path$6 = path$3;
+var path$5 = path$2;
 
 
 /**
@@ -8315,11 +8313,11 @@ var path$6 = path$3;
  *      R.pathOr('N/A', ['a', 'b'], {c: {b: 2}}); //=> "N/A"
  */
 var pathOr = _curry3$27(function pathOr(d, p, obj) {
-  return defaultTo$2(d, path$6(p, obj));
+  return defaultTo$2(d, path$5(p, obj));
 });
 
 var _curry3$28 = _curry3$1;
-var path$7 = path$3;
+var path$6 = path$2;
 
 
 /**
@@ -8342,7 +8340,7 @@ var path$7 = path$3;
  *      R.pathSatisfies(y => y > 0, ['x', 'y'], {x: {y: 2}}); //=> true
  */
 var pathSatisfies = _curry3$28(function pathSatisfies(pred, propPath, obj) {
-  return propPath.length > 0 && pred(path$7(propPath, obj));
+  return propPath.length > 0 && pred(path$6(propPath, obj));
 });
 
 var _curry2$96 = _curry2$1;
@@ -10759,7 +10757,7 @@ var index$6 = {
   partial: partial,
   partialRight: partialRight,
   partition: partition,
-  path: path$3,
+  path: path$2,
   pathEq: pathEq,
   pathOr: pathOr,
   pathSatisfies: pathSatisfies,
@@ -12057,106 +12055,7 @@ function prerelease(version, loose) {
 }
 });
 
-var path$8 = require$$0$2;
-var fs$1 = require$$0$1;
-var _0777 = parseInt('0777', 8);
-
-var index$8 = mkdirP.mkdirp = mkdirP.mkdirP = mkdirP;
-
-function mkdirP (p, opts, f, made) {
-    if (typeof opts === 'function') {
-        f = opts;
-        opts = {};
-    }
-    else if (!opts || typeof opts !== 'object') {
-        opts = { mode: opts };
-    }
-    
-    var mode = opts.mode;
-    var xfs = opts.fs || fs$1;
-    
-    if (mode === undefined) {
-        mode = _0777 & (~process.umask());
-    }
-    if (!made) made = null;
-    
-    var cb = f || function () {};
-    p = path$8.resolve(p);
-    
-    xfs.mkdir(p, mode, function (er) {
-        if (!er) {
-            made = made || p;
-            return cb(null, made);
-        }
-        switch (er.code) {
-            case 'ENOENT':
-                mkdirP(path$8.dirname(p), opts, function (er, made) {
-                    if (er) cb(er, made);
-                    else mkdirP(p, opts, cb, made);
-                });
-                break;
-
-            // In the case of any other error, just see if there's a dir
-            // there already.  If so, then hooray!  If not, then something
-            // is borked.
-            default:
-                xfs.stat(p, function (er2, stat) {
-                    // if the stat fails, then that's super weird.
-                    // let the original error be the failure reason.
-                    if (er2 || !stat.isDirectory()) cb(er, made);
-                    else cb(null, made);
-                });
-                break;
-        }
-    });
-}
-
-mkdirP.sync = function sync (p, opts, made) {
-    if (!opts || typeof opts !== 'object') {
-        opts = { mode: opts };
-    }
-    
-    var mode = opts.mode;
-    var xfs = opts.fs || fs$1;
-    
-    if (mode === undefined) {
-        mode = _0777 & (~process.umask());
-    }
-    if (!made) made = null;
-
-    p = path$8.resolve(p);
-
-    try {
-        xfs.mkdirSync(p, mode);
-        made = made || p;
-    }
-    catch (err0) {
-        switch (err0.code) {
-            case 'ENOENT' :
-                made = sync(path$8.dirname(p), opts, made);
-                sync(p, opts, made);
-                break;
-
-            // In the case of any other error, just see if there's a dir
-            // there already.  If so, then hooray!  If not, then something
-            // is borked.
-            default:
-                var stat;
-                try {
-                    stat = xfs.statSync(p);
-                }
-                catch (err1) {
-                    throw err0;
-                }
-                if (!stat.isDirectory()) throw err0;
-                break;
-        }
-    }
-
-    return made;
-};
-
-var index$10 = createCommonjsModule(function (module) {
+var index$8 = createCommonjsModule(function (module) {
 (function initLazyAss() {
 
   function isArrayLike(a) {
@@ -13479,7 +13378,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 var pathModule = require$$0$2;
 var isWindows = process.platform === 'win32';
-var fs$4 = require$$0$1;
+var fs$3 = require$$0$1;
 
 // JavaScript implementation of realpath, ported from node pre-v6
 
@@ -13572,7 +13471,7 @@ var realpathSync$1 = function realpathSync(p, cache) {
 
     // On windows, check that the root exists. On unix there is no need.
     if (isWindows && !knownHard[base]) {
-      fs$4.lstatSync(base);
+      fs$3.lstatSync(base);
       knownHard[base] = true;
     }
   }
@@ -13599,7 +13498,7 @@ var realpathSync$1 = function realpathSync(p, cache) {
       // some known symbolic link.  no need to stat again.
       resolvedLink = cache[base];
     } else {
-      var stat = fs$4.lstatSync(base);
+      var stat = fs$3.lstatSync(base);
       if (!stat.isSymbolicLink()) {
         knownHard[base] = true;
         if (cache) cache[base] = base;
@@ -13616,8 +13515,8 @@ var realpathSync$1 = function realpathSync(p, cache) {
         }
       }
       if (linkTarget === null) {
-        fs$4.statSync(base);
-        linkTarget = fs$4.readlinkSync(base);
+        fs$3.statSync(base);
+        linkTarget = fs$3.readlinkSync(base);
       }
       resolvedLink = pathModule.resolve(previous, linkTarget);
       // track this, if given a cache.
@@ -13674,7 +13573,7 @@ var realpath$1 = function realpath(p, cache, cb) {
 
     // On windows, check that the root exists. On unix there is no need.
     if (isWindows && !knownHard[base]) {
-      fs$4.lstat(base, function(err) {
+      fs$3.lstat(base, function(err) {
         if (err) return cb(err);
         knownHard[base] = true;
         LOOP();
@@ -13711,7 +13610,7 @@ var realpath$1 = function realpath(p, cache, cb) {
       return gotResolvedLink(cache[base]);
     }
 
-    return fs$4.lstat(base, gotStat);
+    return fs$3.lstat(base, gotStat);
   }
 
   function gotStat(err, stat) {
@@ -13733,10 +13632,10 @@ var realpath$1 = function realpath(p, cache, cb) {
         return gotTarget(null, seenLinks[id], base);
       }
     }
-    fs$4.stat(base, function(err) {
+    fs$3.stat(base, function(err) {
       if (err) return cb(err);
 
-      fs$4.readlink(base, function(err, target) {
+      fs$3.readlink(base, function(err, target) {
         if (!isWindows) seenLinks[id] = target;
         gotTarget(err, target);
       });
@@ -13763,16 +13662,16 @@ var old$1 = {
 	realpath: realpath$1
 };
 
-var index$12 = realpath;
+var index$10 = realpath;
 realpath.realpath = realpath;
 realpath.sync = realpathSync;
 realpath.realpathSync = realpathSync;
 realpath.monkeypatch = monkeypatch;
 realpath.unmonkeypatch = unmonkeypatch;
 
-var fs$3 = require$$0$1;
-var origRealpath = fs$3.realpath;
-var origRealpathSync = fs$3.realpathSync;
+var fs$2 = require$$0$1;
+var origRealpath = fs$2.realpath;
+var origRealpathSync = fs$2.realpathSync;
 
 var version = process.version;
 var ok = /^v[0-5]\./.test(version);
@@ -13821,16 +13720,16 @@ function realpathSync (p, cache) {
 }
 
 function monkeypatch () {
-  fs$3.realpath = realpath;
-  fs$3.realpathSync = realpathSync;
+  fs$2.realpath = realpath;
+  fs$2.realpathSync = realpathSync;
 }
 
 function unmonkeypatch () {
-  fs$3.realpath = origRealpath;
-  fs$3.realpathSync = origRealpathSync;
+  fs$2.realpath = origRealpath;
+  fs$2.realpathSync = origRealpathSync;
 }
 
-var index$16 = function (xs, fn) {
+var index$14 = function (xs, fn) {
     var res = [];
     for (var i = 0; i < xs.length; i++) {
         var x = fn(xs[i], i);
@@ -13844,7 +13743,7 @@ var isArray = Array.isArray || function (xs) {
     return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-var index$18 = balanced$1;
+var index$16 = balanced$1;
 function balanced$1(a, b, str) {
   if (a instanceof RegExp) a = maybeMatch(a, str);
   if (b instanceof RegExp) b = maybeMatch(b, str);
@@ -13903,10 +13802,10 @@ function range$2(a, b, str) {
   return result;
 }
 
-var concatMap = index$16;
-var balanced = index$18;
+var concatMap = index$14;
+var balanced = index$16;
 
-var index$14 = expandTop;
+var index$12 = expandTop;
 
 var escSlash = '\0SLASH'+Math.random()+'\0';
 var escOpen = '\0OPEN'+Math.random()+'\0';
@@ -14103,13 +14002,13 @@ function expand$1(str, isTop) {
 var minimatch_1 = minimatch$1;
 minimatch$1.Minimatch = Minimatch$1;
 
-var path$10 = { sep: '/' };
+var path$8 = { sep: '/' };
 try {
-  path$10 = require$$0$2;
+  path$8 = require$$0$2;
 } catch (er) {}
 
 var GLOBSTAR = minimatch$1.GLOBSTAR = Minimatch$1.GLOBSTAR = {};
-var expand = index$14;
+var expand = index$12;
 
 var plTypes = {
   '!': { open: '(?:(?!(?:', close: '))[^/]*?)'},
@@ -14222,8 +14121,8 @@ function Minimatch$1 (pattern, options) {
   pattern = pattern.trim();
 
   // windows support: need to use /, not \
-  if (path$10.sep !== '/') {
-    pattern = pattern.split(path$10.sep).join('/');
+  if (path$8.sep !== '/') {
+    pattern = pattern.split(path$8.sep).join('/');
   }
 
   this.options = options;
@@ -14811,8 +14710,8 @@ function match$2 (f, partial) {
   var options = this.options;
 
   // windows: need to use /, not \
-  if (path$10.sep !== '/') {
-    f = f.split(path$10.sep).join('/');
+  if (path$8.sep !== '/') {
+    f = f.split(path$8.sep).join('/');
   }
 
   // treat the test path as a set of pathparts.
@@ -15075,12 +14974,12 @@ function win32(path) {
 	return Boolean(result[2] || isUnc);
 }
 
-var index$20 = process.platform === 'win32' ? win32 : posix;
+var index$18 = process.platform === 'win32' ? win32 : posix;
 var posix_1 = posix;
 var win32_1 = win32;
 
-index$20.posix = posix_1;
-index$20.win32 = win32_1;
+index$18.posix = posix_1;
+index$18.win32 = win32_1;
 
 var alphasort_1 = alphasort$2;
 var alphasorti_1 = alphasorti$2;
@@ -15096,9 +14995,9 @@ function ownProp$2 (obj, field) {
   return Object.prototype.hasOwnProperty.call(obj, field)
 }
 
-var path$12 = require$$0$2;
+var path$10 = require$$0$2;
 var minimatch$3 = minimatch_1;
-var isAbsolute$2 = index$20;
+var isAbsolute$2 = index$18;
 var Minimatch$3 = minimatch$3.Minimatch;
 
 function alphasorti$2 (a, b) {
@@ -15178,12 +15077,12 @@ function setopts$2 (self, pattern, options) {
   if (!ownProp$2(options, "cwd"))
     self.cwd = cwd;
   else {
-    self.cwd = path$12.resolve(options.cwd);
+    self.cwd = path$10.resolve(options.cwd);
     self.changedCwd = self.cwd !== cwd;
   }
 
-  self.root = options.root || path$12.resolve(self.cwd, "/");
-  self.root = path$12.resolve(self.root);
+  self.root = options.root || path$10.resolve(self.cwd, "/");
+  self.root = path$10.resolve(self.root);
   if (process.platform === "win32")
     self.root = self.root.replace(/\\/g, "/");
 
@@ -15287,13 +15186,13 @@ function mark (self, p) {
 function makeAbs (self, f) {
   var abs = f;
   if (f.charAt(0) === '/') {
-    abs = path$12.join(self.root, f);
+    abs = path$10.join(self.root, f);
   } else if (isAbsolute$2(f) || f === '') {
     abs = f;
   } else if (self.changedCwd) {
-    abs = path$12.resolve(self.cwd, f);
+    abs = path$10.resolve(self.cwd, f);
   } else {
-    abs = path$12.resolve(f);
+    abs = path$10.resolve(f);
   }
 
   if (process.platform === 'win32')
@@ -15338,12 +15237,12 @@ var common$2 = {
 var sync = globSync$1;
 globSync$1.GlobSync = GlobSync$1;
 
-var fs$5 = require$$0$1;
-var rp$1 = index$12;
+var fs$4 = require$$0$1;
+var rp$1 = index$10;
 var minimatch$2 = minimatch_1;
-var path$11 = require$$0$2;
+var path$9 = require$$0$2;
 var assert$2 = assert;
-var isAbsolute$1 = index$20;
+var isAbsolute$1 = index$18;
 var common$1 = common$2;
 var setopts$1 = common$1.setopts;
 var ownProp$1 = common$1.ownProp;
@@ -15518,7 +15417,7 @@ GlobSync$1.prototype._processReaddir = function (prefix, read, abs, remain, inde
       }
 
       if (e.charAt(0) === '/' && !this.nomount) {
-        e = path$11.join(this.root, e);
+        e = path$9.join(this.root, e);
       }
       this._emitMatch(index, e);
     }
@@ -15580,7 +15479,7 @@ GlobSync$1.prototype._readdirInGlobStar = function (abs) {
   var lstat;
   var stat;
   try {
-    lstat = fs$5.lstatSync(abs);
+    lstat = fs$4.lstatSync(abs);
   } catch (er) {
     if (er.code === 'ENOENT') {
       // lstat failed, doesn't exist
@@ -15617,7 +15516,7 @@ GlobSync$1.prototype._readdir = function (abs, inGlobStar) {
   }
 
   try {
-    return this._readdirEntries(abs, fs$5.readdirSync(abs))
+    return this._readdirEntries(abs, fs$4.readdirSync(abs))
   } catch (er) {
     this._readdirError(abs, er);
     return null
@@ -15731,9 +15630,9 @@ GlobSync$1.prototype._processSimple = function (prefix, index) {
   if (prefix && isAbsolute$1(prefix) && !this.nomount) {
     var trail = /[\/\\]$/.test(prefix);
     if (prefix.charAt(0) === '/') {
-      prefix = path$11.join(this.root, prefix);
+      prefix = path$9.join(this.root, prefix);
     } else {
-      prefix = path$11.resolve(this.root, prefix);
+      prefix = path$9.resolve(this.root, prefix);
       if (trail)
         prefix += '/';
     }
@@ -15776,7 +15675,7 @@ GlobSync$1.prototype._stat = function (f) {
   if (!stat) {
     var lstat;
     try {
-      lstat = fs$5.lstatSync(abs);
+      lstat = fs$4.lstatSync(abs);
     } catch (er) {
       if (er && (er.code === 'ENOENT' || er.code === 'ENOTDIR')) {
         this.statCache[abs] = false;
@@ -15786,7 +15685,7 @@ GlobSync$1.prototype._stat = function (f) {
 
     if (lstat && lstat.isSymbolicLink()) {
       try {
-        stat = fs$5.statSync(abs);
+        stat = fs$4.statSync(abs);
       } catch (er) {
         stat = lstat;
       }
@@ -15993,14 +15892,14 @@ function slice$8 (args) {
 
 var glob_1 = glob$1;
 
-var fs$2 = require$$0$1;
-var rp = index$12;
+var fs$1 = require$$0$1;
+var rp = index$10;
 var minimatch = minimatch_1;
 var inherits = inherits$1;
 var EE = events.EventEmitter;
-var path$9 = require$$0$2;
+var path$7 = require$$0$2;
 var assert$1 = assert;
-var isAbsolute = index$20;
+var isAbsolute = index$18;
 var globSync = sync;
 var common = common$2;
 var setopts = common.setopts;
@@ -16377,7 +16276,7 @@ Glob$1.prototype._processReaddir2 = function (prefix, read, abs, remain, index, 
       }
 
       if (e.charAt(0) === '/' && !this.nomount) {
-        e = path$9.join(this.root, e);
+        e = path$7.join(this.root, e);
       }
       this._emitMatch(index, e);
     }
@@ -16454,7 +16353,7 @@ Glob$1.prototype._readdirInGlobStar = function (abs, cb) {
   var lstatcb = inflight(lstatkey, lstatcb_);
 
   if (lstatcb)
-    fs$2.lstat(abs, lstatcb);
+    fs$1.lstat(abs, lstatcb);
 
   function lstatcb_ (er, lstat) {
     if (er && er.code === 'ENOENT')
@@ -16495,7 +16394,7 @@ Glob$1.prototype._readdir = function (abs, inGlobStar, cb) {
   }
 
   var self = this;
-  fs$2.readdir(abs, readdirCb(this, abs, cb));
+  fs$1.readdir(abs, readdirCb(this, abs, cb));
 };
 
 function readdirCb (self, abs, cb) {
@@ -16641,9 +16540,9 @@ Glob$1.prototype._processSimple2 = function (prefix, index, er, exists, cb) {
   if (prefix && isAbsolute(prefix) && !this.nomount) {
     var trail = /[\/\\]$/.test(prefix);
     if (prefix.charAt(0) === '/') {
-      prefix = path$9.join(this.root, prefix);
+      prefix = path$7.join(this.root, prefix);
     } else {
-      prefix = path$9.resolve(this.root, prefix);
+      prefix = path$7.resolve(this.root, prefix);
       if (trail)
         prefix += '/';
     }
@@ -16699,13 +16598,13 @@ Glob$1.prototype._stat = function (f, cb) {
   var self = this;
   var statcb = inflight('stat\0' + abs, lstatcb_);
   if (statcb)
-    fs$2.lstat(abs, statcb);
+    fs$1.lstat(abs, statcb);
 
   function lstatcb_ (er, lstat) {
     if (lstat && lstat.isSymbolicLink()) {
       // If it's a symlink, then treat it as the target, unless
       // the target does not exist, then treat it as a file.
-      return fs$2.stat(abs, function (er, stat) {
+      return fs$1.stat(abs, function (er, stat) {
         if (er)
           self._stat2(f, abs, null, lstat, cb);
         else
@@ -16936,21 +16835,111 @@ globAll.sync = function(array, opts) {
 
 var globAll_1 = globAll;
 
-const rootFolder = process.env.HAVE || process.env.HOME;
+var path$12 = require$$0$2;
+var fs$6 = require$$0$1;
+var _0777 = parseInt('0777', 8);
 
-const debug = index$2('have-it');
-const path$1 = require$$0$2;
-const fs = require$$0$1;
-const R = index$6;
-const semver = semver$1;
-const mkdirp = index$8;
-const la = index$10;
-const is = checkMoreTypes;
-const glob = globAll_1;
+var index$20 = mkdirP.mkdirp = mkdirP.mkdirP = mkdirP;
 
-debug('using root folder %s', rootFolder);
+function mkdirP (p, opts, f, made) {
+    if (typeof opts === 'function') {
+        f = opts;
+        opts = {};
+    }
+    else if (!opts || typeof opts !== 'object') {
+        opts = { mode: opts };
+    }
+    
+    var mode = opts.mode;
+    var xfs = opts.fs || fs$6;
+    
+    if (mode === undefined) {
+        mode = _0777 & (~process.umask());
+    }
+    if (!made) made = null;
+    
+    var cb = f || function () {};
+    p = path$12.resolve(p);
+    
+    xfs.mkdir(p, mode, function (er) {
+        if (!er) {
+            made = made || p;
+            return cb(null, made);
+        }
+        switch (er.code) {
+            case 'ENOENT':
+                mkdirP(path$12.dirname(p), opts, function (er, made) {
+                    if (er) cb(er, made);
+                    else mkdirP(p, opts, cb, made);
+                });
+                break;
 
-function mkdir (name) {
+            // In the case of any other error, just see if there's a dir
+            // there already.  If so, then hooray!  If not, then something
+            // is borked.
+            default:
+                xfs.stat(p, function (er2, stat) {
+                    // if the stat fails, then that's super weird.
+                    // let the original error be the failure reason.
+                    if (er2 || !stat.isDirectory()) cb(er, made);
+                    else cb(null, made);
+                });
+                break;
+        }
+    });
+}
+
+mkdirP.sync = function sync (p, opts, made) {
+    if (!opts || typeof opts !== 'object') {
+        opts = { mode: opts };
+    }
+    
+    var mode = opts.mode;
+    var xfs = opts.fs || fs$6;
+    
+    if (mode === undefined) {
+        mode = _0777 & (~process.umask());
+    }
+    if (!made) made = null;
+
+    p = path$12.resolve(p);
+
+    try {
+        xfs.mkdirSync(p, mode);
+        made = made || p;
+    }
+    catch (err0) {
+        switch (err0.code) {
+            case 'ENOENT' :
+                made = sync(path$12.dirname(p), opts, made);
+                sync(p, opts, made);
+                break;
+
+            // In the case of any other error, just see if there's a dir
+            // there already.  If so, then hooray!  If not, then something
+            // is borked.
+            default:
+                var stat;
+                try {
+                    stat = xfs.statSync(p);
+                }
+                catch (err1) {
+                    throw err0;
+                }
+                if (!stat.isDirectory()) throw err0;
+                break;
+        }
+    }
+
+    return made;
+};
+
+const mkdirp = index$20;
+const fs$5 = require$$0$1;
+const path$11 = require$$0$2;
+const {concat: concat$4} = index$6;
+
+function mkdir$1 (name) {
   return new Promise((resolve, reject) => {
     mkdirp(name, {}, (err) => {
       if (err) {
@@ -16962,10 +16951,10 @@ function mkdir (name) {
   })
 }
 
-function saveJSON (filename, json) {
+function saveJSON$1 (filename, json) {
   return new Promise((resolve, reject) => {
     const text = JSON.stringify(json, null, 2);
-    fs.writeFile(filename, text, 'utf8', (err) => {
+    fs$5.writeFile(filename, text, 'utf8', (err) => {
       if (err) {
         return reject(err)
       }
@@ -16974,8 +16963,56 @@ function saveJSON (filename, json) {
   })
 }
 
+function loadJSON (filename) {
+  return new Promise((resolve, reject) => {
+    fs$5.readFile(filename, 'utf8', (err, text) => {
+      if (err) {
+        return reject(err)
+      }
+      const json = JSON.parse(text);
+      resolve(json);
+    });
+  })
+}
+
+function isProduction () {
+  return process.env.NODE_ENV === 'production'
+}
+
+function toInstall$1 () {
+  const filename = path$11.join(process.cwd(), 'package.json');
+  return loadJSON(filename).then(pkg => {
+    const deps = Object.keys(pkg.dependencies || {});
+    const devDeps = Object.keys(pkg.devDependencies || {});
+    return isProduction() ? deps : concat$4(deps, devDeps)
+  })
+}
+
+var utils = {
+  mkdir: mkdir$1,
+  saveJSON: saveJSON$1,
+  loadJSON,
+  isProduction,
+  toInstall: toInstall$1
+};
+
+const rootFolder = process.env.HAVE || process.env.HOME;
+
+const debug = index$2('have-it');
+const path = require$$0$2;
+const fs = require$$0$1;
+const R = index$6;
+const semver = semver$1;
+const la = index$8;
+const is = checkMoreTypes;
+const glob = globAll_1;
+
+const {mkdir, saveJSON} = utils;
+
+debug('using root folder %s', rootFolder);
+
 function getVersion (folder) {
-  const packageFilename = path$1.join(folder, 'package.json');
+  const packageFilename = path.join(folder, 'package.json');
   return new Promise((resolve, reject) => {
     try {
       fs.readFile(packageFilename, 'utf8', (err, s) => {
@@ -16984,7 +17021,7 @@ function getVersion (folder) {
         }
         const json = JSON.parse(s);
         const main = json.main || 'index.js';
-        const fullMain = path$1.isAbsolute(main) ? main : path$1.join(folder, main);
+        const fullMain = path.isAbsolute(main) ? main : path.join(folder, main);
         if (!fs.existsSync(fullMain)) {
           const notFound = new Error(`Cannot find main file ${fullMain}`);
           return reject(notFound)
@@ -17053,7 +17090,7 @@ function installMain (p) {
     // TODO: use real NPM install in this case
     return
   }
-  const destination = path$1.join(process.cwd(), 'node_modules', p.name);
+  const destination = path.join(process.cwd(), 'node_modules', p.name);
   debug('installing', p);
   debug('as', destination);
 
@@ -17065,7 +17102,7 @@ function installMain (p) {
         version: p.version,
         description: 'fake module created by \'have-it\' pointing at existing module'
       };
-      const filename = path$1.join(destination, 'package.json');
+      const filename = path.join(destination, 'package.json');
       return saveJSON(filename, pkg)
     }).then(R.always(p))
 }
@@ -17087,6 +17124,7 @@ function findAndInstall$1 (names) {
   if (is.string(names)) {
     names = [names];
   }
+  la(is.array(names), 'expected list of names to install', names);
 
   return findModules(names)
     .then(R.tap(print))
@@ -17100,12 +17138,7 @@ var index = findAndInstall$1;
 
 const findAndInstall = index;
 const name = process.argv[2];
-const path = require$$0$2;
-
-function toInstall () {
-  const pkg = commonjsRequire(path.join(process.cwd(), 'package.json'));
-  return Object.keys(pkg.dependencies || {})
-}
+const {toInstall} = utils;
 
 function onError (err) {
   console.error(err);
@@ -17114,8 +17147,8 @@ function onError (err) {
 
 if (!name) {
   // installing all packages from package.json
-  const list = toInstall();
-  findAndInstall(list)
+  toInstall()
+    .then(findAndInstall)
     .catch(onError);
 } else {
   console.log('have-it %s', name);

@@ -1,11 +1,6 @@
 const findAndInstall = require('..')
 const name = process.argv[2]
-const path = require('path')
-
-function toInstall () {
-  const pkg = require(path.join(process.cwd(), 'package.json'))
-  return Object.keys(pkg.dependencies || {})
-}
+const {toInstall} = require('../src/utils')
 
 function onError (err) {
   console.error(err)
@@ -14,8 +9,8 @@ function onError (err) {
 
 if (!name) {
   // installing all packages from package.json
-  const list = toInstall()
-  findAndInstall(list)
+  toInstall()
+    .then(findAndInstall)
     .catch(onError)
 } else {
   console.log('have-it %s', name)
