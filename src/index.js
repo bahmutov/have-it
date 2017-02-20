@@ -1,13 +1,12 @@
 'use strict'
 
-const rootFolder = process.env.HOME
+const rootFolder = process.env.HAVE || process.env.HOME
 
 const debug = require('debug')('have-it')
 const path = require('path')
 const fs = require('fs')
 const R = require('ramda')
 const semver = require('semver')
-// const execa = require('execa')
 const mkdirp = require('mkdirp')
 const la = require('lazy-ass')
 const is = require('check-more-types')

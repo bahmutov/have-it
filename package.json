@@ -63,7 +63,8 @@
     "size": "t=\"$(npm pack .)\"; wc -c \"${t}\"; tar tvf \"${t}\"; rm \"${t}\";",
     "test": "npm run unit",
     "unit": "mocha src/*-spec.js",
-    "semantic-release": "semantic-release pre && npm publish && semantic-release post"
+    "semantic-release": "semantic-release pre && npm publish && semantic-release post",
+    "postinstall": "echo have-it: set HAVE environment variable\nto the root folder with most packages"
   },
   "devDependencies": {
     "ban-sensitive-files": "1.9.0",
