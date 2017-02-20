@@ -83,9 +83,9 @@ module loader.
 
 ## Big missing features
 
-* [ ] [#8](issues/8) - save installed name version in `package.json`
-* [ ] [#9](issues/9) - respect `package.json` versions when installing
-* [ ] [#10](issues/10) - allow installing specific version from CLI `have lodash@3.0.0`
+* [ ] [#8](bahmutov/have-it#8) - save installed name version in `package.json`
+* [ ] [#9](bahmutov/have-it#9) - respect `package.json` versions when installing
+* [ ] [#10](bahmutov/have-it#10) - allow installing specific version from CLI `have lodash@3.0.0`
 
 ## Related projects
 
