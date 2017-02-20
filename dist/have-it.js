@@ -10,6 +10,9 @@ var net = _interopDefault(require('net'));
 var require$$0$2 = _interopDefault(require('path'));
 var events = _interopDefault(require('events'));
 var assert = _interopDefault(require('assert'));
+var child_process = _interopDefault(require('child_process'));
+var os = _interopDefault(require('os'));
+var stream = _interopDefault(require('stream'));
 
 var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -627,7 +630,7 @@ if (1 !== fd && 2 !== fd) {
   util.deprecate(function(){}, 'except for stderr(2) and stdout(1), any other usage of DEBUG_FD is deprecated. Override debug.log if you want to use a different log function (https://git.io/debug_fd)')();
 }
 
-var stream = 1 === fd ? process.stdout :
+var stream$$1 = 1 === fd ? process.stdout :
              2 === fd ? process.stderr :
              createWritableStdioStream(fd);
 
@@ -687,7 +690,7 @@ function formatArgs(args) {
  */
 
 function log() {
-  return stream.write(util.format.apply(util, arguments) + '\n');
+  return stream$$1.write(util.format.apply(util, arguments) + '\n');
 }
 
 /**
@@ -726,33 +729,33 @@ function load() {
  */
 
 function createWritableStdioStream (fd) {
-  var stream;
+  var stream$$1;
   var tty_wrap = process.binding('tty_wrap');
 
   // Note stream._type is used for test-module-load-list.js
 
   switch (tty_wrap.guessHandleType(fd)) {
     case 'TTY':
-      stream = new tty$$1.WriteStream(fd);
-      stream._type = 'tty';
+      stream$$1 = new tty$$1.WriteStream(fd);
+      stream$$1._type = 'tty';
 
       // Hack to have stream not keep the event loop alive.
       // See https://github.com/joyent/node/issues/1726
-      if (stream._handle && stream._handle.unref) {
-        stream._handle.unref();
+      if (stream$$1._handle && stream$$1._handle.unref) {
+        stream$$1._handle.unref();
       }
       break;
 
     case 'FILE':
       var fs = require$$0$1;
-      stream = new fs.SyncWriteStream(fd, { autoClose: false });
-      stream._type = 'fs';
+      stream$$1 = new fs.SyncWriteStream(fd, { autoClose: false });
+      stream$$1._type = 'fs';
       break;
 
     case 'PIPE':
     case 'TCP':
       var net$$1 = net;
-      stream = new net$$1.Socket({
+      stream$$1 = new net$$1.Socket({
         fd: fd,
         readable: false,
         writable: true
@@ -762,14 +765,14 @@ function createWritableStdioStream (fd) {
       // stream from an existing fd which is writable only. But for now
       // we'll just add this hack and set the `readable` member to false.
       // Test: ./node test/fixtures/echo.js < /etc/passwd
-      stream.readable = false;
-      stream.read = null;
-      stream._type = 'pipe';
+      stream$$1.readable = false;
+      stream$$1.read = null;
+      stream$$1._type = 'pipe';
 
       // FIXME Hack to have stream not keep the event loop alive.
       // See https://github.com/joyent/node/issues/1726
-      if (stream._handle && stream._handle.unref) {
-        stream._handle.unref();
+      if (stream$$1._handle && stream$$1._handle.unref) {
+        stream$$1._handle.unref();
       }
       break;
 
@@ -779,11 +782,11 @@ function createWritableStdioStream (fd) {
   }
 
   // For supporting legacy API we put the FD here.
-  stream.fd = fd;
+  stream$$1.fd = fd;
 
-  stream._isStdio = true;
+  stream$$1._isStdio = true;
 
-  return stream;
+  return stream$$1;
 }
 
 /**
@@ -16835,11 +16838,2666 @@ globAll.sync = function(array, opts) {
 
 var globAll_1 = globAll;
 
-var path$12 = require$$0$2;
+var windows = isexe$2;
+isexe$2.sync = sync$4;
+
 var fs$6 = require$$0$1;
+
+function checkPathExt (path, options) {
+  var pathext = options.pathExt !== undefined ?
+    options.pathExt : process.env.PATHEXT;
+
+  if (!pathext) {
+    return true
+  }
+
+  pathext = pathext.split(';');
+  if (pathext.indexOf('') !== -1) {
+    return true
+  }
+  for (var i = 0; i < pathext.length; i++) {
+    var p = pathext[i].toLowerCase();
+    if (p && path.substr(-p.length).toLowerCase() === p) {
+      return true
+    }
+  }
+  return false
+}
+
+function isexe$2 (path, options, cb) {
+  fs$6.stat(path, function (er, st) {
+    cb(er, er ? false : checkPathExt(path, options));
+  });
+}
+
+function sync$4 (path, options) {
+  fs$6.statSync(path);
+  return checkPathExt(path, options)
+}
+
+var access = isexe$3;
+isexe$3.sync = sync$5;
+
+var fs$7 = require$$0$1;
+
+function isexe$3 (path, _, cb) {
+  fs$7.access(path, fs$7.X_OK, function (er) {
+    cb(er, !er);
+  });
+}
+
+function sync$5 (path, _) {
+  fs$7.accessSync(path, fs$7.X_OK);
+  return true
+}
+
+var mode = isexe$4;
+isexe$4.sync = sync$6;
+
+var fs$8 = require$$0$1;
+
+function isexe$4 (path, options, cb) {
+  fs$8.stat(path, function (er, st) {
+    cb(er, er ? false : checkMode(st, options));
+  });
+}
+
+function sync$6 (path, options) {
+  return checkMode(fs$8.statSync(path), options)
+}
+
+function checkMode (stat, options) {
+  var mod = stat.mode;
+  var uid = stat.uid;
+  var gid = stat.gid;
+
+  var myUid = options.uid !== undefined ?
+    options.uid : process.getuid && process.getuid();
+  var myGid = options.gid !== undefined ?
+    options.gid : process.getgid && process.getgid();
+
+  var u = parseInt('100', 8);
+  var g = parseInt('010', 8);
+  var o = parseInt('001', 8);
+  var ug = u | g;
+
+  var ret = (mod & o) ||
+    (mod & g) && gid === myGid ||
+    (mod & u) && uid === myUid ||
+    (mod & ug) && myUid === 0;
+
+  return ret
+}
+
+var fs$5 = require$$0$1;
+var core;
+if (process.platform === 'win32' || commonjsGlobal.TESTING_WINDOWS) {
+  core = windows;
+} else if (typeof fs$5.access === 'function') {
+  core = access;
+} else {
+  core = mode;
+}
+
+var index$24 = isexe$1;
+isexe$1.sync = sync$3;
+
+function isexe$1 (path, options, cb) {
+  if (typeof options === 'function') {
+    cb = options;
+    options = {};
+  }
+
+  if (!cb) {
+    if (typeof Promise !== 'function') {
+      throw new TypeError('callback not provided')
+    }
+
+    return new Promise(function (resolve, reject) {
+      isexe$1(path, options || {}, function (er, is) {
+        if (er) {
+          reject(er);
+        } else {
+          resolve(is);
+        }
+      });
+    })
+  }
+
+  core(path, options || {}, function (er, is) {
+    // ignore EACCES because that just means we aren't allowed to run it
+    if (er) {
+      if (er.code === 'EACCES' || options && options.ignoreErrors) {
+        er = null;
+        is = false;
+      }
+    }
+    cb(er, is);
+  });
+}
+
+function sync$3 (path, options) {
+  // my kingdom for a filtered catch
+  try {
+    return core.sync(path, options || {})
+  } catch (er) {
+    if (options && options.ignoreErrors || er.code === 'EACCES') {
+      return false
+    } else {
+      throw er
+    }
+  }
+}
+
+var which_1 = which$1;
+which$1.sync = whichSync;
+
+var isWindows$1 = process.platform === 'win32' ||
+    process.env.OSTYPE === 'cygwin' ||
+    process.env.OSTYPE === 'msys';
+
+var path$12 = require$$0$2;
+var COLON = isWindows$1 ? ';' : ':';
+var isexe = index$24;
+
+function getNotFoundError (cmd) {
+  var er = new Error('not found: ' + cmd);
+  er.code = 'ENOENT';
+
+  return er
+}
+
+function getPathInfo (cmd, opt) {
+  var colon = opt.colon || COLON;
+  var pathEnv = opt.path || process.env.PATH || '';
+  var pathExt = [''];
+
+  pathEnv = pathEnv.split(colon);
+
+  var pathExtExe = '';
+  if (isWindows$1) {
+    pathEnv.unshift(process.cwd());
+    pathExtExe = (opt.pathExt || process.env.PATHEXT || '.EXE;.CMD;.BAT;.COM');
+    pathExt = pathExtExe.split(colon);
+
+
+    // Always test the cmd itself first.  isexe will check to make sure
+    // it's found in the pathExt set.
+    if (cmd.indexOf('.') !== -1 && pathExt[0] !== '')
+      pathExt.unshift('');
+  }
+
+  // If it has a slash, then we don't bother searching the pathenv.
+  // just check the file itself, and that's it.
+  if (cmd.match(/\//) || isWindows$1 && cmd.match(/\\/))
+    pathEnv = [''];
+
+  return {
+    env: pathEnv,
+    ext: pathExt,
+    extExe: pathExtExe
+  }
+}
+
+function which$1 (cmd, opt, cb) {
+  if (typeof opt === 'function') {
+    cb = opt;
+    opt = {};
+  }
+
+  var info = getPathInfo(cmd, opt);
+  var pathEnv = info.env;
+  var pathExt = info.ext;
+  var pathExtExe = info.extExe;
+  var found = [];(function F (i, l) {
+    if (i === l) {
+      if (opt.all && found.length)
+        return cb(null, found)
+      else
+        return cb(getNotFoundError(cmd))
+    }
+
+    var pathPart = pathEnv[i];
+    if (pathPart.charAt(0) === '"' && pathPart.slice(-1) === '"')
+      pathPart = pathPart.slice(1, -1);
+
+    var p = path$12.join(pathPart, cmd);
+    if (!pathPart && (/^\.[\\\/]/).test(cmd)) {
+      p = cmd.slice(0, 2) + p;
+    }
+    (function E (ii, ll) {
+      if (ii === ll) return F(i + 1, l)
+      var ext = pathExt[ii];
+      isexe(p + ext, { pathExt: pathExtExe }, function (er, is) {
+        if (!er && is) {
+          if (opt.all)
+            found.push(p + ext);
+          else
+            return cb(null, p + ext)
+        }
+        return E(ii + 1, ll)
+      });
+    })(0, pathExt.length);
+  })(0, pathEnv.length);
+}
+
+function whichSync (cmd, opt) {
+  opt = opt || {};
+
+  var info = getPathInfo(cmd, opt);
+  var pathEnv = info.env;
+  var pathExt = info.ext;
+  var pathExtExe = info.extExe;
+  var found = [];
+
+  for (var i = 0, l = pathEnv.length; i < l; i ++) {
+    var pathPart = pathEnv[i];
+    if (pathPart.charAt(0) === '"' && pathPart.slice(-1) === '"')
+      pathPart = pathPart.slice(1, -1);
+
+    var p = path$12.join(pathPart, cmd);
+    if (!pathPart && /^\.[\\\/]/.test(cmd)) {
+      p = cmd.slice(0, 2) + p;
+    }
+    for (var j = 0, ll = pathExt.length; j < ll; j ++) {
+      var cur = p + pathExt[j];
+      var is;
+      try {
+        is = isexe.sync(cur, { pathExt: pathExtExe });
+        if (is) {
+          if (opt.all)
+            found.push(cur);
+          else
+            return cur
+        }
+      } catch (ex) {}
+    }
+  }
+
+  if (opt.all && found.length)
+    return found
+
+  throw getNotFoundError(cmd)
+}
+
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+var pseudomap = PseudoMap;
+
+function PseudoMap (set) {
+  if (!(this instanceof PseudoMap)) // whyyyyyyy
+    throw new TypeError("Constructor PseudoMap requires 'new'")
+
+  this.clear();
+
+  if (set) {
+    if ((set instanceof PseudoMap) ||
+        (typeof Map === 'function' && set instanceof Map))
+      set.forEach(function (value, key) {
+        this.set(key, value);
+      }, this);
+    else if (Array.isArray(set))
+      set.forEach(function (kv) {
+        this.set(kv[0], kv[1]);
+      }, this);
+    else
+      throw new TypeError('invalid argument')
+  }
+}
+
+PseudoMap.prototype.forEach = function (fn, thisp) {
+  thisp = thisp || this;
+  Object.keys(this._data).forEach(function (k) {
+    if (k !== 'size')
+      fn.call(thisp, this._data[k].value, this._data[k].key);
+  }, this);
+};
+
+PseudoMap.prototype.has = function (k) {
+  return !!find$2(this._data, k)
+};
+
+PseudoMap.prototype.get = function (k) {
+  var res = find$2(this._data, k);
+  return res && res.value
+};
+
+PseudoMap.prototype.set = function (k, v) {
+  set$2(this._data, k, v);
+};
+
+PseudoMap.prototype.delete = function (k) {
+  var res = find$2(this._data, k);
+  if (res) {
+    delete this._data[res._index];
+    this._data.size--;
+  }
+};
+
+PseudoMap.prototype.clear = function () {
+  var data = Object.create(null);
+  data.size = 0;
+
+  Object.defineProperty(this, '_data', {
+    value: data,
+    enumerable: false,
+    configurable: true,
+    writable: false
+  });
+};
+
+Object.defineProperty(PseudoMap.prototype, 'size', {
+  get: function () {
+    return this._data.size
+  },
+  set: function (n) {},
+  enumerable: true,
+  configurable: true
+});
+
+PseudoMap.prototype.values =
+PseudoMap.prototype.keys =
+PseudoMap.prototype.entries = function () {
+  throw new Error('iterators are not implemented in this version')
+};
+
+// Either identical, or both NaN
+function same (a, b) {
+  return a === b || a !== a && b !== b
+}
+
+function Entry$1 (k, v, i) {
+  this.key = k;
+  this.value = v;
+  this._index = i;
+}
+
+function find$2 (data, k) {
+  for (var i = 0, s = '_' + k, key = s;
+       hasOwnProperty.call(data, key);
+       key = s + i++) {
+    if (same(data[key].key, k))
+      return data[key]
+  }
+}
+
+function set$2 (data, k, v) {
+  for (var i = 0, s = '_' + k, key = s;
+       hasOwnProperty.call(data, key);
+       key = s + i++) {
+    if (same(data[key].key, k)) {
+      data[key].value = v;
+      return
+    }
+  }
+  data.size++;
+  data[key] = new Entry$1(k, v, key);
+}
+
+var map$14 = createCommonjsModule(function (module) {
+if (process.env.npm_package_name === 'pseudomap' &&
+    process.env.npm_lifecycle_script === 'test')
+  process.env.TEST_PSEUDOMAP = 'true';
+
+if (typeof Map === 'function' && !process.env.TEST_PSEUDOMAP) {
+  module.exports = Map;
+} else {
+  module.exports = pseudomap;
+}
+});
+
+var yallist = Yallist$1;
+
+Yallist$1.Node = Node;
+Yallist$1.create = Yallist$1;
+
+function Yallist$1 (list) {
+  var self = this;
+  if (!(self instanceof Yallist$1)) {
+    self = new Yallist$1();
+  }
+
+  self.tail = null;
+  self.head = null;
+  self.length = 0;
+
+  if (list && typeof list.forEach === 'function') {
+    list.forEach(function (item) {
+      self.push(item);
+    });
+  } else if (arguments.length > 0) {
+    for (var i = 0, l = arguments.length; i < l; i++) {
+      self.push(arguments[i]);
+    }
+  }
+
+  return self
+}
+
+Yallist$1.prototype.removeNode = function (node) {
+  if (node.list !== this) {
+    throw new Error('removing node which does not belong to this list')
+  }
+
+  var next = node.next;
+  var prev = node.prev;
+
+  if (next) {
+    next.prev = prev;
+  }
+
+  if (prev) {
+    prev.next = next;
+  }
+
+  if (node === this.head) {
+    this.head = next;
+  }
+  if (node === this.tail) {
+    this.tail = prev;
+  }
+
+  node.list.length --;
+  node.next = null;
+  node.prev = null;
+  node.list = null;
+};
+
+Yallist$1.prototype.unshiftNode = function (node) {
+  if (node === this.head) {
+    return
+  }
+
+  if (node.list) {
+    node.list.removeNode(node);
+  }
+
+  var head = this.head;
+  node.list = this;
+  node.next = head;
+  if (head) {
+    head.prev = node;
+  }
+
+  this.head = node;
+  if (!this.tail) {
+    this.tail = node;
+  }
+  this.length ++;
+};
+
+Yallist$1.prototype.pushNode = function (node) {
+  if (node === this.tail) {
+    return
+  }
+
+  if (node.list) {
+    node.list.removeNode(node);
+  }
+
+  var tail = this.tail;
+  node.list = this;
+  node.prev = tail;
+  if (tail) {
+    tail.next = node;
+  }
+
+  this.tail = node;
+  if (!this.head) {
+    this.head = node;
+  }
+  this.length ++;
+};
+
+Yallist$1.prototype.push = function () {
+  for (var i = 0, l = arguments.length; i < l; i++) {
+    push(this, arguments[i]);
+  }
+  return this.length
+};
+
+Yallist$1.prototype.unshift = function () {
+  for (var i = 0, l = arguments.length; i < l; i++) {
+    unshift(this, arguments[i]);
+  }
+  return this.length
+};
+
+Yallist$1.prototype.pop = function () {
+  if (!this.tail)
+    return undefined
+
+  var res = this.tail.value;
+  this.tail = this.tail.prev;
+  this.tail.next = null;
+  this.length --;
+  return res
+};
+
+Yallist$1.prototype.shift = function () {
+  if (!this.head)
+    return undefined
+
+  var res = this.head.value;
+  this.head = this.head.next;
+  this.head.prev = null;
+  this.length --;
+  return res
+};
+
+Yallist$1.prototype.forEach = function (fn, thisp) {
+  thisp = thisp || this;
+  for (var walker = this.head, i = 0; walker !== null; i++) {
+    fn.call(thisp, walker.value, i, this);
+    walker = walker.next;
+  }
+};
+
+Yallist$1.prototype.forEachReverse = function (fn, thisp) {
+  thisp = thisp || this;
+  for (var walker = this.tail, i = this.length - 1; walker !== null; i--) {
+    fn.call(thisp, walker.value, i, this);
+    walker = walker.prev;
+  }
+};
+
+Yallist$1.prototype.get = function (n) {
+  for (var i = 0, walker = this.head; walker !== null && i < n; i++) {
+    // abort out of the list early if we hit a cycle
+    walker = walker.next;
+  }
+  if (i === n && walker !== null) {
+    return walker.value
+  }
+};
+
+Yallist$1.prototype.getReverse = function (n) {
+  for (var i = 0, walker = this.tail; walker !== null && i < n; i++) {
+    // abort out of the list early if we hit a cycle
+    walker = walker.prev;
+  }
+  if (i === n && walker !== null) {
+    return walker.value
+  }
+};
+
+Yallist$1.prototype.map = function (fn, thisp) {
+  thisp = thisp || this;
+  var res = new Yallist$1();
+  for (var walker = this.head; walker !== null; ) {
+    res.push(fn.call(thisp, walker.value, this));
+    walker = walker.next;
+  }
+  return res
+};
+
+Yallist$1.prototype.mapReverse = function (fn, thisp) {
+  thisp = thisp || this;
+  var res = new Yallist$1();
+  for (var walker = this.tail; walker !== null;) {
+    res.push(fn.call(thisp, walker.value, this));
+    walker = walker.prev;
+  }
+  return res
+};
+
+Yallist$1.prototype.reduce = function (fn, initial) {
+  var acc;
+  var walker = this.head;
+  if (arguments.length > 1) {
+    acc = initial;
+  } else if (this.head) {
+    walker = this.head.next;
+    acc = this.head.value;
+  } else {
+    throw new TypeError('Reduce of empty list with no initial value')
+  }
+
+  for (var i = 0; walker !== null; i++) {
+    acc = fn(acc, walker.value, i);
+    walker = walker.next;
+  }
+
+  return acc
+};
+
+Yallist$1.prototype.reduceReverse = function (fn, initial) {
+  var acc;
+  var walker = this.tail;
+  if (arguments.length > 1) {
+    acc = initial;
+  } else if (this.tail) {
+    walker = this.tail.prev;
+    acc = this.tail.value;
+  } else {
+    throw new TypeError('Reduce of empty list with no initial value')
+  }
+
+  for (var i = this.length - 1; walker !== null; i--) {
+    acc = fn(acc, walker.value, i);
+    walker = walker.prev;
+  }
+
+  return acc
+};
+
+Yallist$1.prototype.toArray = function () {
+  var arr = new Array(this.length);
+  for (var i = 0, walker = this.head; walker !== null; i++) {
+    arr[i] = walker.value;
+    walker = walker.next;
+  }
+  return arr
+};
+
+Yallist$1.prototype.toArrayReverse = function () {
+  var arr = new Array(this.length);
+  for (var i = 0, walker = this.tail; walker !== null; i++) {
+    arr[i] = walker.value;
+    walker = walker.prev;
+  }
+  return arr
+};
+
+Yallist$1.prototype.slice = function (from, to) {
+  to = to || this.length;
+  if (to < 0) {
+    to += this.length;
+  }
+  from = from || 0;
+  if (from < 0) {
+    from += this.length;
+  }
+  var ret = new Yallist$1();
+  if (to < from || to < 0) {
+    return ret
+  }
+  if (from < 0) {
+    from = 0;
+  }
+  if (to > this.length) {
+    to = this.length;
+  }
+  for (var i = 0, walker = this.head; walker !== null && i < from; i++) {
+    walker = walker.next;
+  }
+  for (; walker !== null && i < to; i++, walker = walker.next) {
+    ret.push(walker.value);
+  }
+  return ret
+};
+
+Yallist$1.prototype.sliceReverse = function (from, to) {
+  to = to || this.length;
+  if (to < 0) {
+    to += this.length;
+  }
+  from = from || 0;
+  if (from < 0) {
+    from += this.length;
+  }
+  var ret = new Yallist$1();
+  if (to < from || to < 0) {
+    return ret
+  }
+  if (from < 0) {
+    from = 0;
+  }
+  if (to > this.length) {
+    to = this.length;
+  }
+  for (var i = this.length, walker = this.tail; walker !== null && i > to; i--) {
+    walker = walker.prev;
+  }
+  for (; walker !== null && i > from; i--, walker = walker.prev) {
+    ret.push(walker.value);
+  }
+  return ret
+};
+
+Yallist$1.prototype.reverse = function () {
+  var head = this.head;
+  var tail = this.tail;
+  for (var walker = head; walker !== null; walker = walker.prev) {
+    var p = walker.prev;
+    walker.prev = walker.next;
+    walker.next = p;
+  }
+  this.head = tail;
+  this.tail = head;
+  return this
+};
+
+function push (self, item) {
+  self.tail = new Node(item, self.tail, null, self);
+  if (!self.head) {
+    self.head = self.tail;
+  }
+  self.length ++;
+}
+
+function unshift (self, item) {
+  self.head = new Node(item, null, self.head, self);
+  if (!self.tail) {
+    self.tail = self.head;
+  }
+  self.length ++;
+}
+
+function Node (value, prev, next, list) {
+  if (!(this instanceof Node)) {
+    return new Node(value, prev, next, list)
+  }
+
+  this.list = list;
+  this.value = value;
+
+  if (prev) {
+    prev.next = this;
+    this.prev = prev;
+  } else {
+    this.prev = null;
+  }
+
+  if (next) {
+    next.prev = this;
+    this.next = next;
+  } else {
+    this.next = null;
+  }
+}
+
+var lruCache = LRUCache;
+
+// This will be a proper iterable 'Map' in engines that support it,
+// or a fakey-fake PseudoMap in older versions.
+var Map$1 = map$14;
+var util$3 = require$$0;
+
+// A linked list to keep track of recently-used-ness
+var Yallist = yallist;
+
+// use symbols if possible, otherwise just _props
+var symbols = {};
+var hasSymbol = typeof Symbol === 'function';
+var makeSymbol;
+/* istanbul ignore if */
+if (hasSymbol) {
+  makeSymbol = function (key) {
+    return Symbol.for(key)
+  };
+} else {
+  makeSymbol = function (key) {
+    return '_' + key
+  };
+}
+
+function priv (obj, key, val) {
+  var sym;
+  if (symbols[key]) {
+    sym = symbols[key];
+  } else {
+    sym = makeSymbol(key);
+    symbols[key] = sym;
+  }
+  if (arguments.length === 2) {
+    return obj[sym]
+  } else {
+    obj[sym] = val;
+    return val
+  }
+}
+
+function naiveLength () { return 1 }
+
+// lruList is a yallist where the head is the youngest
+// item, and the tail is the oldest.  the list contains the Hit
+// objects as the entries.
+// Each Hit object has a reference to its Yallist.Node.  This
+// never changes.
+//
+// cache is a Map (or PseudoMap) that matches the keys to
+// the Yallist.Node object.
+function LRUCache (options) {
+  if (!(this instanceof LRUCache)) {
+    return new LRUCache(options)
+  }
+
+  if (typeof options === 'number') {
+    options = { max: options };
+  }
+
+  if (!options) {
+    options = {};
+  }
+
+  var max = priv(this, 'max', options.max);
+  // Kind of weird to have a default max of Infinity, but oh well.
+  if (!max ||
+      !(typeof max === 'number') ||
+      max <= 0) {
+    priv(this, 'max', Infinity);
+  }
+
+  var lc = options.length || naiveLength;
+  if (typeof lc !== 'function') {
+    lc = naiveLength;
+  }
+  priv(this, 'lengthCalculator', lc);
+
+  priv(this, 'allowStale', options.stale || false);
+  priv(this, 'maxAge', options.maxAge || 0);
+  priv(this, 'dispose', options.dispose);
+  this.reset();
+}
+
+// resize the cache when the max changes.
+Object.defineProperty(LRUCache.prototype, 'max', {
+  set: function (mL) {
+    if (!mL || !(typeof mL === 'number') || mL <= 0) {
+      mL = Infinity;
+    }
+    priv(this, 'max', mL);
+    trim$2(this);
+  },
+  get: function () {
+    return priv(this, 'max')
+  },
+  enumerable: true
+});
+
+Object.defineProperty(LRUCache.prototype, 'allowStale', {
+  set: function (allowStale) {
+    priv(this, 'allowStale', !!allowStale);
+  },
+  get: function () {
+    return priv(this, 'allowStale')
+  },
+  enumerable: true
+});
+
+Object.defineProperty(LRUCache.prototype, 'maxAge', {
+  set: function (mA) {
+    if (!mA || !(typeof mA === 'number') || mA < 0) {
+      mA = 0;
+    }
+    priv(this, 'maxAge', mA);
+    trim$2(this);
+  },
+  get: function () {
+    return priv(this, 'maxAge')
+  },
+  enumerable: true
+});
+
+// resize the cache when the lengthCalculator changes.
+Object.defineProperty(LRUCache.prototype, 'lengthCalculator', {
+  set: function (lC) {
+    if (typeof lC !== 'function') {
+      lC = naiveLength;
+    }
+    if (lC !== priv(this, 'lengthCalculator')) {
+      priv(this, 'lengthCalculator', lC);
+      priv(this, 'length', 0);
+      priv(this, 'lruList').forEach(function (hit) {
+        hit.length = priv(this, 'lengthCalculator').call(this, hit.value, hit.key);
+        priv(this, 'length', priv(this, 'length') + hit.length);
+      }, this);
+    }
+    trim$2(this);
+  },
+  get: function () { return priv(this, 'lengthCalculator') },
+  enumerable: true
+});
+
+Object.defineProperty(LRUCache.prototype, 'length', {
+  get: function () { return priv(this, 'length') },
+  enumerable: true
+});
+
+Object.defineProperty(LRUCache.prototype, 'itemCount', {
+  get: function () { return priv(this, 'lruList').length },
+  enumerable: true
+});
+
+LRUCache.prototype.rforEach = function (fn, thisp) {
+  thisp = thisp || this;
+  for (var walker = priv(this, 'lruList').tail; walker !== null;) {
+    var prev = walker.prev;
+    forEachStep(this, fn, walker, thisp);
+    walker = prev;
+  }
+};
+
+function forEachStep (self, fn, node, thisp) {
+  var hit = node.value;
+  if (isStale(self, hit)) {
+    del(self, node);
+    if (!priv(self, 'allowStale')) {
+      hit = undefined;
+    }
+  }
+  if (hit) {
+    fn.call(thisp, hit.value, hit.key, self);
+  }
+}
+
+LRUCache.prototype.forEach = function (fn, thisp) {
+  thisp = thisp || this;
+  for (var walker = priv(this, 'lruList').head; walker !== null;) {
+    var next = walker.next;
+    forEachStep(this, fn, walker, thisp);
+    walker = next;
+  }
+};
+
+LRUCache.prototype.keys = function () {
+  return priv(this, 'lruList').toArray().map(function (k) {
+    return k.key
+  }, this)
+};
+
+LRUCache.prototype.values = function () {
+  return priv(this, 'lruList').toArray().map(function (k) {
+    return k.value
+  }, this)
+};
+
+LRUCache.prototype.reset = function () {
+  if (priv(this, 'dispose') &&
+      priv(this, 'lruList') &&
+      priv(this, 'lruList').length) {
+    priv(this, 'lruList').forEach(function (hit) {
+      priv(this, 'dispose').call(this, hit.key, hit.value);
+    }, this);
+  }
+
+  priv(this, 'cache', new Map$1()); // hash of items by key
+  priv(this, 'lruList', new Yallist()); // list of items in order of use recency
+  priv(this, 'length', 0); // length of items in the list
+};
+
+LRUCache.prototype.dump = function () {
+  return priv(this, 'lruList').map(function (hit) {
+    if (!isStale(this, hit)) {
+      return {
+        k: hit.key,
+        v: hit.value,
+        e: hit.now + (hit.maxAge || 0)
+      }
+    }
+  }, this).toArray().filter(function (h) {
+    return h
+  })
+};
+
+LRUCache.prototype.dumpLru = function () {
+  return priv(this, 'lruList')
+};
+
+LRUCache.prototype.inspect = function (n, opts) {
+  var str = 'LRUCache {';
+  var extras = false;
+
+  var as = priv(this, 'allowStale');
+  if (as) {
+    str += '\n  allowStale: true';
+    extras = true;
+  }
+
+  var max = priv(this, 'max');
+  if (max && max !== Infinity) {
+    if (extras) {
+      str += ',';
+    }
+    str += '\n  max: ' + util$3.inspect(max, opts);
+    extras = true;
+  }
+
+  var maxAge = priv(this, 'maxAge');
+  if (maxAge) {
+    if (extras) {
+      str += ',';
+    }
+    str += '\n  maxAge: ' + util$3.inspect(maxAge, opts);
+    extras = true;
+  }
+
+  var lc = priv(this, 'lengthCalculator');
+  if (lc && lc !== naiveLength) {
+    if (extras) {
+      str += ',';
+    }
+    str += '\n  length: ' + util$3.inspect(priv(this, 'length'), opts);
+    extras = true;
+  }
+
+  var didFirst = false;
+  priv(this, 'lruList').forEach(function (item) {
+    if (didFirst) {
+      str += ',\n  ';
+    } else {
+      if (extras) {
+        str += ',\n';
+      }
+      didFirst = true;
+      str += '\n  ';
+    }
+    var key = util$3.inspect(item.key).split('\n').join('\n  ');
+    var val = { value: item.value };
+    if (item.maxAge !== maxAge) {
+      val.maxAge = item.maxAge;
+    }
+    if (lc !== naiveLength) {
+      val.length = item.length;
+    }
+    if (isStale(this, item)) {
+      val.stale = true;
+    }
+
+    val = util$3.inspect(val, opts).split('\n').join('\n  ');
+    str += key + ' => ' + val;
+  });
+
+  if (didFirst || extras) {
+    str += '\n';
+  }
+  str += '}';
+
+  return str
+};
+
+LRUCache.prototype.set = function (key, value, maxAge) {
+  maxAge = maxAge || priv(this, 'maxAge');
+
+  var now = maxAge ? Date.now() : 0;
+  var len = priv(this, 'lengthCalculator').call(this, value, key);
+
+  if (priv(this, 'cache').has(key)) {
+    if (len > priv(this, 'max')) {
+      del(this, priv(this, 'cache').get(key));
+      return false
+    }
+
+    var node = priv(this, 'cache').get(key);
+    var item = node.value;
+
+    // dispose of the old one before overwriting
+    if (priv(this, 'dispose')) {
+      priv(this, 'dispose').call(this, key, item.value);
+    }
+
+    item.now = now;
+    item.maxAge = maxAge;
+    item.value = value;
+    priv(this, 'length', priv(this, 'length') + (len - item.length));
+    item.length = len;
+    this.get(key);
+    trim$2(this);
+    return true
+  }
+
+  var hit = new Entry(key, value, len, now, maxAge);
+
+  // oversized objects fall out of cache automatically.
+  if (hit.length > priv(this, 'max')) {
+    if (priv(this, 'dispose')) {
+      priv(this, 'dispose').call(this, key, value);
+    }
+    return false
+  }
+
+  priv(this, 'length', priv(this, 'length') + hit.length);
+  priv(this, 'lruList').unshift(hit);
+  priv(this, 'cache').set(key, priv(this, 'lruList').head);
+  trim$2(this);
+  return true
+};
+
+LRUCache.prototype.has = function (key) {
+  if (!priv(this, 'cache').has(key)) return false
+  var hit = priv(this, 'cache').get(key).value;
+  if (isStale(this, hit)) {
+    return false
+  }
+  return true
+};
+
+LRUCache.prototype.get = function (key) {
+  return get(this, key, true)
+};
+
+LRUCache.prototype.peek = function (key) {
+  return get(this, key, false)
+};
+
+LRUCache.prototype.pop = function () {
+  var node = priv(this, 'lruList').tail;
+  if (!node) return null
+  del(this, node);
+  return node.value
+};
+
+LRUCache.prototype.del = function (key) {
+  del(this, priv(this, 'cache').get(key));
+};
+
+LRUCache.prototype.load = function (arr) {
+  // reset the cache
+  this.reset();
+
+  var now = Date.now();
+  // A previous serialized cache has the most recent items first
+  for (var l = arr.length - 1; l >= 0; l--) {
+    var hit = arr[l];
+    var expiresAt = hit.e || 0;
+    if (expiresAt === 0) {
+      // the item was created without expiration in a non aged cache
+      this.set(hit.k, hit.v);
+    } else {
+      var maxAge = expiresAt - now;
+      // dont add already expired items
+      if (maxAge > 0) {
+        this.set(hit.k, hit.v, maxAge);
+      }
+    }
+  }
+};
+
+LRUCache.prototype.prune = function () {
+  var self = this;
+  priv(this, 'cache').forEach(function (value, key) {
+    get(self, key, false);
+  });
+};
+
+function get (self, key, doUse) {
+  var node = priv(self, 'cache').get(key);
+  if (node) {
+    var hit = node.value;
+    if (isStale(self, hit)) {
+      del(self, node);
+      if (!priv(self, 'allowStale')) hit = undefined;
+    } else {
+      if (doUse) {
+        priv(self, 'lruList').unshiftNode(node);
+      }
+    }
+    if (hit) hit = hit.value;
+  }
+  return hit
+}
+
+function isStale (self, hit) {
+  if (!hit || (!hit.maxAge && !priv(self, 'maxAge'))) {
+    return false
+  }
+  var stale = false;
+  var diff = Date.now() - hit.now;
+  if (hit.maxAge) {
+    stale = diff > hit.maxAge;
+  } else {
+    stale = priv(self, 'maxAge') && (diff > priv(self, 'maxAge'));
+  }
+  return stale
+}
+
+function trim$2 (self) {
+  if (priv(self, 'length') > priv(self, 'max')) {
+    for (var walker = priv(self, 'lruList').tail;
+         priv(self, 'length') > priv(self, 'max') && walker !== null;) {
+      // We know that we're about to delete this one, and also
+      // what the next least recently used key will be, so just
+      // go ahead and set it now.
+      var prev = walker.prev;
+      del(self, walker);
+      walker = prev;
+    }
+  }
+}
+
+function del (self, node) {
+  if (node) {
+    var hit = node.value;
+    if (priv(self, 'dispose')) {
+      priv(self, 'dispose').call(this, hit.key, hit.value);
+    }
+    priv(self, 'length', priv(self, 'length') - hit.length);
+    priv(self, 'cache').delete(hit.key);
+    priv(self, 'lruList').removeNode(node);
+  }
+}
+
+// classy, since V8 prefers predictable objects.
+function Entry (key, value, length, now, maxAge) {
+  this.key = key;
+  this.value = value;
+  this.length = length;
+  this.now = now;
+  this.maxAge = maxAge || 0;
+}
+
+var path$11 = require$$0$2;
+var which = which_1;
+var LRU = lruCache;
+
+var commandCache = new LRU({ max: 50, maxAge: 30 * 1000 });  // Cache just for 30sec
+
+function resolveCommand$1(command, noExtension) {
+    var resolved;
+
+    noExtension = !!noExtension;
+    resolved = commandCache.get(command + '!' + noExtension);
+
+    // Check if its resolved in the cache
+    if (commandCache.has(command)) {
+        return commandCache.get(command);
+    }
+
+    try {
+        resolved = !noExtension ?
+            which.sync(command) :
+            which.sync(command, { pathExt: path$11.delimiter + (process.env.PATHEXT || '') });
+    } catch (e) { /* empty */ }
+
+    commandCache.set(command + '!' + noExtension, resolved);
+
+    return resolved;
+}
+
+var resolveCommand_1 = resolveCommand$1;
+
+// See: https://github.com/IndigoUnited/node-cross-spawn/pull/34#issuecomment-221623455
+function hasEmptyArgumentBug$1() {
+    var nodeVer;
+
+    if (process.platform !== 'win32') {
+        return false;
+    }
+
+    nodeVer = process.version.substr(1).split('.').map(function (num) {
+        return parseInt(num, 10);
+    });
+
+    return (nodeVer[0] === 0 && nodeVer[1] < 12);
+}
+
+var hasEmptyArgumentBug_1 = hasEmptyArgumentBug$1();
+
+function escapeArgument$1(arg, quote) {
+    // Convert to string
+    arg = '' + arg;
+
+    // If we are not going to quote the argument,
+    // escape shell metacharacters, including double and single quotes:
+    if (!quote) {
+        arg = arg.replace(/([()%!^<>&|;,"'\s])/g, '^$1');
+    } else {
+        // Sequence of backslashes followed by a double quote:
+        // double up all the backslashes and escape the double quote
+        arg = arg.replace(/(\\*)"/g, '$1$1\\"');
+
+        // Sequence of backslashes followed by the end of the string
+        // (which will become a double quote later):
+        // double up all the backslashes
+        arg = arg.replace(/(\\*)$/, '$1$1');
+
+        // All other backslashes occur literally
+
+        // Quote the whole thing:
+        arg = '"' + arg + '"';
+    }
+
+    return arg;
+}
+
+var escapeArgument_1 = escapeArgument$1;
+
+var escapeArgument$2 = escapeArgument_1;
+
+function escapeCommand$1(command) {
+    // Do not escape if this command is not dangerous..
+    // We do this so that commands like "echo" or "ifconfig" work
+    // Quoting them, will make them unaccessible
+    return /^[a-z0-9_-]+$/i.test(command) ? command : escapeArgument$2(command, true);
+}
+
+var escapeCommand_1 = escapeCommand$1;
+
+var index$28 = /^#!.*/;
+
+var shebangRegex = index$28;
+
+var index$26 = function (str) {
+	var match = str.match(shebangRegex);
+
+	if (!match) {
+		return null;
+	}
+
+	var arr = match[0].replace(/#! ?/, '').split(' ');
+	var bin = arr[0].split('/').pop();
+	var arg = arr[1];
+
+	return (bin === 'env' ?
+		arg :
+		bin + (arg ? ' ' + arg : '')
+	);
+};
+
+var fs$9 = require$$0$1;
+var LRU$1 = lruCache;
+var shebangCommand = index$26;
+
+var shebangCache = new LRU$1({ max: 50, maxAge: 30 * 1000 });  // Cache just for 30sec
+
+function readShebang$1(command) {
+    var buffer;
+    var fd;
+    var shebang;
+
+    // Check if it is in the cache first
+    if (shebangCache.has(command)) {
+        return shebangCache.get(command);
+    }
+
+    // Read the first 150 bytes from the file
+    buffer = new Buffer(150);
+
+    try {
+        fd = fs$9.openSync(command, 'r');
+        fs$9.readSync(fd, buffer, 0, 150, 0);
+        fs$9.closeSync(fd);
+    } catch (e) { /* empty */ }
+
+    // Attempt to extract shebang (null is returned if not a shebang)
+    shebang = shebangCommand(buffer.toString());
+
+    // Store the shebang in the cache
+    shebangCache.set(command, shebang);
+
+    return shebang;
+}
+
+var readShebang_1 = readShebang$1;
+
+var resolveCommand = resolveCommand_1;
+var hasEmptyArgumentBug = hasEmptyArgumentBug_1;
+var escapeArgument = escapeArgument_1;
+var escapeCommand = escapeCommand_1;
+var readShebang = readShebang_1;
+
+var isWin = process.platform === 'win32';
+var skipShellRegExp = /\.(?:com|exe)$/i;
+var supportsShellOption = parseInt(process.version.substr(1).split('.')[0], 10) >= 6;
+
+function parseNonShell(parsed) {
+    var shebang;
+    var needsShell;
+    var applyQuotes;
+
+    if (!isWin) {
+        return parsed;
+    }
+
+    // Detect & add support for shebangs
+    parsed.file = resolveCommand(parsed.command);
+    parsed.file = parsed.file || resolveCommand(parsed.command, true);
+    shebang = parsed.file && readShebang(parsed.file);
+
+    if (shebang) {
+        parsed.args.unshift(parsed.file);
+        parsed.command = shebang;
+        needsShell = hasEmptyArgumentBug || !skipShellRegExp.test(resolveCommand(shebang) || resolveCommand(shebang, true));
+    } else {
+        needsShell = hasEmptyArgumentBug || !skipShellRegExp.test(parsed.file);
+    }
+
+    // If a shell is required, use cmd.exe and take care of escaping everything correctly
+    if (needsShell) {
+        // Escape command & arguments
+        applyQuotes = (parsed.command !== 'echo');  // Do not quote arguments for the special "echo" command
+        parsed.command = escapeCommand(parsed.command);
+        parsed.args = parsed.args.map(function (arg) {
+            return escapeArgument(arg, applyQuotes);
+        });
+
+        // Make use of cmd.exe
+        parsed.args = ['/d', '/s', '/c', '"' + parsed.command + (parsed.args.length ? ' ' + parsed.args.join(' ') : '') + '"'];
+        parsed.command = process.env.comspec || 'cmd.exe';
+        parsed.options.windowsVerbatimArguments = true;  // Tell node's spawn that the arguments are already escaped
+    }
+
+    return parsed;
+}
+
+function parseShell(parsed) {
+    var shellCommand;
+
+    // If node supports the shell option, there's no need to mimic its behavior
+    if (supportsShellOption) {
+        return parsed;
+    }
+
+    // Mimic node shell option, see: https://github.com/nodejs/node/blob/b9f6a2dc059a1062776133f3d4fd848c4da7d150/lib/child_process.js#L335
+    shellCommand = [parsed.command].concat(parsed.args).join(' ');
+
+    if (isWin) {
+        parsed.command = typeof parsed.options.shell === 'string' ? parsed.options.shell : process.env.comspec || 'cmd.exe';
+        parsed.args = ['/d', '/s', '/c', '"' + shellCommand + '"'];
+        parsed.options.windowsVerbatimArguments = true;  // Tell node's spawn that the arguments are already escaped
+    } else {
+        if (typeof parsed.options.shell === 'string') {
+            parsed.command = parsed.options.shell;
+        } else if (process.platform === 'android') {
+            parsed.command = '/system/bin/sh';
+        } else {
+            parsed.command = '/bin/sh';
+        }
+
+        parsed.args = ['-c', shellCommand];
+    }
+
+    return parsed;
+}
+
+// ------------------------------------------------
+
+function parse$3(command, args, options) {
+    var parsed;
+
+    // Normalize arguments, similar to nodejs
+    if (args && !Array.isArray(args)) {
+        options = args;
+        args = null;
+    }
+
+    args = args ? args.slice(0) : [];  // Clone array to avoid changing the original
+    options = options || {};
+
+    // Build our parsed object
+    parsed = {
+        command: command,
+        args: args,
+        options: options,
+        file: undefined,
+        original: command,
+    };
+
+    // Delegate further parsing to shell or non-shell
+    return options.shell ? parseShell(parsed) : parseNonShell(parsed);
+}
+
+var parse_1 = parse$3;
+
+var isWin$1 = process.platform === 'win32';
+var resolveCommand$2 = resolveCommand_1;
+
+var isNode10 = process.version.indexOf('v0.10.') === 0;
+
+function notFoundError(command, syscall) {
+    var err;
+
+    err = new Error(syscall + ' ' + command + ' ENOENT');
+    err.code = err.errno = 'ENOENT';
+    err.syscall = syscall + ' ' + command;
+
+    return err;
+}
+
+function hookChildProcess(cp, parsed) {
+    var originalEmit;
+
+    if (!isWin$1) {
+        return;
+    }
+
+    originalEmit = cp.emit;
+    cp.emit = function (name, arg1) {
+        var err;
+
+        // If emitting "exit" event and exit code is 1, we need to check if
+        // the command exists and emit an "error" instead
+        // See: https://github.com/IndigoUnited/node-cross-spawn/issues/16
+        if (name === 'exit') {
+            err = verifyENOENT(arg1, parsed, 'spawn');
+
+            if (err) {
+                return originalEmit.call(cp, 'error', err);
+            }
+        }
+
+        return originalEmit.apply(cp, arguments);
+    };
+}
+
+function verifyENOENT(status, parsed) {
+    if (isWin$1 && status === 1 && !parsed.file) {
+        return notFoundError(parsed.original, 'spawn');
+    }
+
+    return null;
+}
+
+function verifyENOENTSync(status, parsed) {
+    if (isWin$1 && status === 1 && !parsed.file) {
+        return notFoundError(parsed.original, 'spawnSync');
+    }
+
+    // If we are in node 10, then we are using spawn-sync; if it exited
+    // with -1 it probably means that the command does not exist
+    if (isNode10 && status === -1) {
+        parsed.file = isWin$1 ? parsed.file : resolveCommand$2(parsed.original);
+
+        if (!parsed.file) {
+            return notFoundError(parsed.original, 'spawnSync');
+        }
+    }
+
+    return null;
+}
+
+var hookChildProcess_1 = hookChildProcess;
+var verifyENOENT_1 = verifyENOENT;
+var verifyENOENTSync_1 = verifyENOENTSync;
+var notFoundError_1 = notFoundError;
+
+var enoent$1 = {
+	hookChildProcess: hookChildProcess_1,
+	verifyENOENT: verifyENOENT_1,
+	verifyENOENTSync: verifyENOENTSync_1,
+	notFoundError: notFoundError_1
+};
+
+var os$1 = os;
+var osShim;
+
+// clone the 'os' module object to avoid mutations and unexpected behavior
+var os_1 = osShim = clone$2(os$1);
+
+//
+// apply the missing API
+//
+
+if (!os$1.tmpdir) {
+  osShim.tmpdir = tmpdir$1;
+}
+
+if (!os$1.platform) {
+  osShim.platform = platform;
+}
+
+if (!os$1.arch) {
+  osShim.arch = arch;
+}
+
+if (!os$1.endianness) {
+  osShim.endianness = endianness;
+}
+
+if (!os$1.EOL) {
+  Object.defineProperty(osShim, 'EOL', {
+    get: function () {
+      return process.platform === 'win32' ? '\n\r' : '\n'
+    }
+  });
+}
+
+function tmpdir$1() {
+  var isWindows = process.platform === 'win32';
+  var env = process.env;
+
+  if (isWindows) {
+    return env.TEMP ||
+           env.TMP ||
+           (env.SystemRoot || env.windir) + '\\temp';
+  } else {
+    return env.TMPDIR ||
+           env.TMP ||
+           env.TEMP ||
+           '/tmp';
+  }
+}
+
+function platform() {
+  return process.platform
+}
+
+function arch() {
+  return process.arch
+}
+
+function endianness() {
+  var isEndianness = ((new Uint32Array((new Uint8Array([1,2,3,4])).buffer))[0] === 0x04030201);
+  return isEndianness ? 'LE' : 'BE'
+}
+
+function clone$2(object) {
+  var prop, cloneObj = {};
+  for (prop in object) {
+    if (object.hasOwnProperty(prop)) {
+      cloneObj[prop] = object[prop];
+    }
+  }
+  return cloneObj
+}
+
+//TODO: handle reviver/dehydrate function like normal
+//and handle indentation, like normal.
+//if anyone needs this... please send pull request.
+
+var stringify = function stringify (o) {
+  if(o && Buffer.isBuffer(o))
+    return JSON.stringify(':base64:' + o.toString('base64'))
+
+  if(o && o.toJSON)
+    o =  o.toJSON();
+
+  if(o && 'object' === typeof o) {
+    var s = '';
+    var array = Array.isArray(o);
+    s = array ? '[' : '{';
+    var first = true;
+
+    for(var k in o) {
+      var ignore = 'function' == typeof o[k] || (!array && 'undefined' === typeof o[k]);
+      if(Object.hasOwnProperty.call(o, k) && !ignore) {
+        if(!first)
+          s += ',';
+        first = false;
+        if (array) {
+          s += stringify(o[k]);
+        } else if (o[k] !== void(0)) {
+          s += stringify(k) + ':' + stringify(o[k]);
+        }
+      }
+    }
+
+    s += array ? ']' : '}';
+
+    return s
+  } else if ('string' === typeof o) {
+    return JSON.stringify(/^:/.test(o) ? ':' + o : o)
+  } else if ('undefined' === typeof o) {
+    return 'null';
+  } else
+    return JSON.stringify(o)
+};
+
+var parse$4 = function (s) {
+  return JSON.parse(s, function (key, value) {
+    if('string' === typeof value) {
+      if(/^:base64:/.test(value))
+        return new Buffer(value.substring(8), 'base64')
+      else
+        return /^:/.test(value) ? value.substring(1) : value
+    }
+    return value
+  })
+};
+
+var index$32 = {
+	stringify: stringify,
+	parse: parse$4
+};
+
+var childProcess = child_process;
+var nodeBin = process.argv[0];
+
+var index$36 = sleep$1;
+function sleep$1(milliseconds) {
+  var start = Date.now();
+  if (milliseconds !== Math.floor(milliseconds)) {
+    throw new TypeError('sleep only accepts an integer number of milliseconds');
+  } else if (milliseconds < 0) {
+    throw new RangeError('sleep only accepts a positive number of milliseconds');
+  } else if (milliseconds !== (milliseconds | 0)) {
+    throw new RangeError('sleep duration out of range')
+  }
+  milliseconds = milliseconds | 0;
+
+  var shouldEnd = start + milliseconds;
+  childProcess.execFileSync(nodeBin, [ '-e',
+    'setTimeout(function() {}, ' + shouldEnd + ' - Date.now());'
+  ]);
+  var end = Date.now();
+  return end - start;
+}
+
+var index$34 = createCommonjsModule(function (module) {
+'use strict';
+
+try {
+  module.exports = index$36;
+  module.exports.native = true;
+} catch (ex) {
+  module.exports = function (milliseconds) {
+    var start = Date.now();
+    if (milliseconds !== (milliseconds | 0)) {
+      throw new TypeError('sleep only accepts an integer number of milliseconds');
+    }
+    milliseconds = milliseconds | 0;
+    if (milliseconds < 0) {
+      throw new TypeError('sleep only accepts a positive number of milliseconds');
+    }
+    var end = Date.now();
+    return end - start;
+  };
+  module.exports.native = false;
+}
+});
+
+var path$13 = require$$0$2;
+var fs$10 = require$$0$1;
+var tmpdir = os.tmpdir || os_1.tmpdir;
+var cp$1 = child_process;
+var sleep;
+var JSON$1 = index$32;
+try {
+  sleep = index$34;
+} catch (ex) {
+  console.warn('Native thread-sleep not available.');
+  console.warn('This will result in much slower performance, but it will still work.');
+  console.warn('You should re-install spawn-sync or upgrade to the lastest version of node if possible.');
+  console.warn('Check ' + path$13.resolve(__dirname, '../error.log') + ' for more details');
+  sleep = function () {};
+}
+
+var temp = path$13.normalize(path$13.join(tmpdir(), 'spawn-sync'));
+
+function randomFileName(name) {
+  function randomHash(count) {
+    if (count === 1)
+      return parseInt(16*Math.random(), 10).toString(16);
+    else {
+      var hash = '';
+      for (var i=0; i<count; i++)
+        hash += randomHash(1);
+      return hash;
+    }
+  }
+
+  return temp + '_' + name + '_' + String(process.pid) + randomHash(20);
+}
+function unlink(filename) {
+  try {
+    fs$10.unlinkSync(filename);
+  } catch (ex) {
+    if (ex.code !== 'ENOENT') throw ex;
+  }
+}
+function tryUnlink(filename) {
+  // doesn't matter too much if we fail to delete temp files
+  try {
+    fs$10.unlinkSync(filename);
+  } catch(e) {}
+}
+
+function invoke(cmd) {
+  // location to keep flag for busy waiting fallback
+  var finished = randomFileName("finished");
+  unlink(finished);
+  if (process.platform === 'win32') {
+    cmd = cmd + '& echo "finished" > ' + finished;
+  } else {
+    cmd = cmd + '; echo "finished" > ' + finished;
+  }
+  cp$1.exec(cmd);
+
+  while (!fs$10.existsSync(finished)) {
+    // busy wait
+    sleep(200);
+  }
+
+  tryUnlink(finished);
+
+  return 0;
+}
+
+var spawnSync$1 = spawnSyncFallback;
+function spawnSyncFallback(cmd, commandArgs, options) {
+  var args = [];
+  for (var i = 0; i < arguments.length; i++) {
+    args.push(arguments[i]);
+  }
+
+  // node.js script to run the command
+  var worker = path$13.normalize(__dirname + '/worker.js');
+  // location to store arguments
+  var input = randomFileName('input');
+  var output = randomFileName('output');
+  unlink(output);
+
+  fs$10.writeFileSync(input, JSON$1.stringify(args));
+  invoke('"' + process.execPath + '" "' + worker + '" "' + input + '" "' + output + '"');
+  var res = JSON$1.parse(fs$10.readFileSync(output, 'utf8'));
+  tryUnlink(input);tryUnlink(output);
+  return res;
+}
+
+var index$30 = child_process.spawnSync || spawnSync$1;
+
+var cp = child_process;
+var parse$2 = parse_1;
+var enoent = enoent$1;
+
+var cpSpawnSync = cp.spawnSync;
+
+function spawn(command, args, options) {
+    var parsed;
+    var spawned;
+
+    // Parse the arguments
+    parsed = parse$2(command, args, options);
+
+    // Spawn the child process
+    spawned = cp.spawn(parsed.command, parsed.args, parsed.options);
+
+    // Hook into child process "exit" event to emit an error if the command
+    // does not exists, see: https://github.com/IndigoUnited/node-cross-spawn/issues/16
+    enoent.hookChildProcess(spawned, parsed);
+
+    return spawned;
+}
+
+function spawnSync(command, args, options) {
+    var parsed;
+    var result;
+
+    if (!cpSpawnSync) {
+        try {
+            cpSpawnSync = index$30;  // eslint-disable-line global-require
+        } catch (ex) {
+            throw new Error(
+                'In order to use spawnSync on node 0.10 or older, you must ' +
+                'install spawn-sync:\n\n' +
+                '  npm install spawn-sync --save'
+            );
+        }
+    }
+
+    // Parse the arguments
+    parsed = parse$2(command, args, options);
+
+    // Spawn the child process
+    result = cpSpawnSync(parsed.command, parsed.args, parsed.options);
+
+    // Analyze if the command does not exists, see: https://github.com/IndigoUnited/node-cross-spawn/issues/16
+    result.error = result.error || enoent.verifyENOENTSync(result.status, parsed);
+
+    return result;
+}
+
+var index$22 = spawn;
+var spawn_1 = spawn;
+var sync$2 = spawnSync;
+
+var _parse = parse$2;
+var _enoent = enoent;
+
+index$22.spawn = spawn_1;
+index$22.sync = sync$2;
+index$22._parse = _parse;
+index$22._enoent = _enoent;
+
+var index$38 = function (x) {
+	var lf = typeof x === 'string' ? '\n' : '\n'.charCodeAt();
+	var cr = typeof x === 'string' ? '\r' : '\r'.charCodeAt();
+
+	if (x[x.length - 1] === lf) {
+		x = x.slice(0, x.length - 1);
+	}
+
+	if (x[x.length - 1] === cr) {
+		x = x.slice(0, x.length - 1);
+	}
+
+	return x;
+};
+
+var index$42 = opts => {
+	opts = opts || {};
+
+	const env = opts.env || process.env;
+	const platform = opts.platform || process.platform;
+
+	if (platform !== 'win32') {
+		return 'PATH';
+	}
+
+	return Object.keys(env).find(x => x.toUpperCase() === 'PATH') || 'Path';
+};
+
+var index$40 = createCommonjsModule(function (module) {
+'use strict';
+const path = require$$0$2;
+const pathKey = index$42;
+
+module.exports = opts => {
+	opts = Object.assign({
+		cwd: process.cwd(),
+		path: process.env[pathKey()]
+	}, opts);
+
+	let prev;
+	let pth = path.resolve(opts.cwd);
+	const ret = [];
+
+	while (prev !== pth) {
+		ret.push(path.join(pth, 'node_modules/.bin'));
+		prev = pth;
+		pth = path.resolve(pth, '..');
+	}
+
+	// ensure the running `node` binary is used
+	ret.push(path.dirname(process.execPath));
+
+	return ret.concat(opts.path).join(path.delimiter);
+};
+
+module.exports.env = opts => {
+	opts = Object.assign({
+		env: process.env
+	}, opts);
+
+	const env = Object.assign({}, opts.env);
+	const path = pathKey({env});
+
+	opts.path = env[path];
+	env[path] = module.exports(opts);
+
+	return env;
+};
+});
+
+var index$44 = createCommonjsModule(function (module) {
+'use strict';
+
+var isStream = module.exports = function (stream$$1) {
+	return stream$$1 !== null && typeof stream$$1 === 'object' && typeof stream$$1.pipe === 'function';
+};
+
+isStream.writable = function (stream$$1) {
+	return isStream(stream$$1) && stream$$1.writable !== false && typeof stream$$1._write === 'function' && typeof stream$$1._writableState === 'object';
+};
+
+isStream.readable = function (stream$$1) {
+	return isStream(stream$$1) && stream$$1.readable !== false && typeof stream$$1._read === 'function' && typeof stream$$1._readableState === 'object';
+};
+
+isStream.duplex = function (stream$$1) {
+	return isStream.writable(stream$$1) && isStream.readable(stream$$1);
+};
+
+isStream.transform = function (stream$$1) {
+	return isStream.duplex(stream$$1) && typeof stream$$1._transform === 'function' && typeof stream$$1._transformState === 'object';
+};
+});
+
+const PassThrough = stream.PassThrough;
+
+var bufferStream$1 = opts => {
+	opts = Object.assign({}, opts);
+
+	const array = opts.array;
+	let encoding = opts.encoding;
+	const buffer = encoding === 'buffer';
+	let objectMode = false;
+
+	if (array) {
+		objectMode = !(encoding || buffer);
+	} else {
+		encoding = encoding || 'utf8';
+	}
+
+	if (buffer) {
+		encoding = null;
+	}
+
+	let len = 0;
+	const ret = [];
+	const stream$$1 = new PassThrough({objectMode});
+
+	if (encoding) {
+		stream$$1.setEncoding(encoding);
+	}
+
+	stream$$1.on('data', chunk => {
+		ret.push(chunk);
+
+		if (objectMode) {
+			len = ret.length;
+		} else {
+			len += chunk.length;
+		}
+	});
+
+	stream$$1.getBufferedValue = () => {
+		if (array) {
+			return ret;
+		}
+
+		return buffer ? Buffer.concat(ret, len) : ret.join('');
+	};
+
+	stream$$1.getBufferedLength = () => len;
+
+	return stream$$1;
+};
+
+const bufferStream = bufferStream$1;
+
+function getStream(inputStream, opts) {
+	if (!inputStream) {
+		return Promise.reject(new Error('Expected a stream'));
+	}
+
+	opts = Object.assign({maxBuffer: Infinity}, opts);
+
+	const maxBuffer = opts.maxBuffer;
+	let stream$$1;
+	let clean;
+
+	const p = new Promise((resolve, reject) => {
+		const error = err => {
+			if (err) { // null check
+				err.bufferedData = stream$$1.getBufferedValue();
+			}
+
+			reject(err);
+		};
+
+		stream$$1 = bufferStream(opts);
+		inputStream.once('error', error);
+		inputStream.pipe(stream$$1);
+
+		stream$$1.on('data', () => {
+			if (stream$$1.getBufferedLength() > maxBuffer) {
+				reject(new Error('maxBuffer exceeded'));
+			}
+		});
+		stream$$1.once('error', error);
+		stream$$1.on('end', resolve);
+
+		clean = () => {
+			// some streams doesn't implement the `stream.Readable` interface correctly
+			if (inputStream.unpipe) {
+				inputStream.unpipe(stream$$1);
+			}
+		};
+	});
+
+	p.then(clean, clean);
+
+	return p.then(() => stream$$1.getBufferedValue());
+}
+
+var index$46 = getStream;
+var buffer = (stream$$1, opts) => getStream(stream$$1, Object.assign({}, opts, {encoding: 'buffer'}));
+var array = (stream$$1, opts) => getStream(stream$$1, Object.assign({}, opts, {array: true}));
+
+index$46.buffer = buffer;
+index$46.array = array;
+
+var index$48 = (promise, onFinally) => {
+	onFinally = onFinally || (() => {});
+
+	return promise.then(
+		val => new Promise(resolve => {
+			resolve(onFinally());
+		}).then(() => val),
+		err => new Promise(resolve => {
+			resolve(onFinally());
+		}).then(() => {
+			throw err;
+		})
+	);
+};
+
+var signals$1 = createCommonjsModule(function (module) {
+// This is not the set of all possible signals.
+//
+// It IS, however, the set of all signals that trigger
+// an exit on either Linux or BSD systems.  Linux is a
+// superset of the signal names supported on BSD, and
+// the unknown signals just fail to register, so we can
+// catch that easily enough.
+//
+// Don't bother with SIGKILL.  It's uncatchable, which
+// means that we can't fire any callbacks anyway.
+//
+// If a user does happen to register a handler on a non-
+// fatal signal like SIGWINCH or something, and then
+// exit, it'll end up firing `process.emit('exit')`, so
+// the handler will be fired anyway.
+//
+// SIGBUS, SIGFPE, SIGSEGV and SIGILL, when not raised
+// artificially, inherently leave the process in a
+// state from which it is not safe to try and enter JS
+// listeners.
+module.exports = [
+  'SIGABRT',
+  'SIGALRM',
+  'SIGHUP',
+  'SIGINT',
+  'SIGTERM'
+];
+
+if (process.platform !== 'win32') {
+  module.exports.push(
+    'SIGVTALRM',
+    'SIGXCPU',
+    'SIGXFSZ',
+    'SIGUSR2',
+    'SIGTRAP',
+    'SIGSYS',
+    'SIGQUIT',
+    'SIGIOT'
+    // should detect profiler and enable/disable accordingly.
+    // see #21
+    // 'SIGPROF'
+  );
+}
+
+if (process.platform === 'linux') {
+  module.exports.push(
+    'SIGIO',
+    'SIGPOLL',
+    'SIGPWR',
+    'SIGSTKFLT',
+    'SIGUNUSED'
+  );
+}
+});
+
+// Note: since nyc uses this module to output coverage, any lines
+// that are in the direct sync flow of nyc's outputCoverage are
+// ignored, since we can never get coverage for them.
+var assert$3 = assert;
+var signals = signals$1;
+
+var EE$1 = events;
+/* istanbul ignore if */
+if (typeof EE$1 !== 'function') {
+  EE$1 = EE$1.EventEmitter;
+}
+
+var emitter;
+if (process.__signal_exit_emitter__) {
+  emitter = process.__signal_exit_emitter__;
+} else {
+  emitter = process.__signal_exit_emitter__ = new EE$1();
+  emitter.count = 0;
+  emitter.emitted = {};
+}
+
+// Because this emitter is a global, we have to check to see if a
+// previous version of this library failed to enable infinite listeners.
+// I know what you're about to say.  But literally everything about
+// signal-exit is a compromise with evil.  Get used to it.
+if (!emitter.infinite) {
+  emitter.setMaxListeners(Infinity);
+  emitter.infinite = true;
+}
+
+var index$50 = function (cb, opts) {
+  assert$3.equal(typeof cb, 'function', 'a callback must be provided for exit handler');
+
+  if (loaded === false) {
+    load();
+  }
+
+  var ev = 'exit';
+  if (opts && opts.alwaysLast) {
+    ev = 'afterexit';
+  }
+
+  var remove = function () {
+    emitter.removeListener(ev, cb);
+    if (emitter.listeners('exit').length === 0 &&
+        emitter.listeners('afterexit').length === 0) {
+      unload();
+    }
+  };
+  emitter.on(ev, cb);
+
+  return remove
+};
+
+var unload_1 = unload;
+function unload () {
+  if (!loaded) {
+    return
+  }
+  loaded = false;
+
+  signals.forEach(function (sig) {
+    try {
+      process.removeListener(sig, sigListeners[sig]);
+    } catch (er) {}
+  });
+  process.emit = originalProcessEmit;
+  process.reallyExit = originalProcessReallyExit;
+  emitter.count -= 1;
+}
+
+function emit (event, code, signal) {
+  if (emitter.emitted[event]) {
+    return
+  }
+  emitter.emitted[event] = true;
+  emitter.emit(event, code, signal);
+}
+
+// { <signal>: <listener fn>, ... }
+var sigListeners = {};
+signals.forEach(function (sig) {
+  sigListeners[sig] = function listener () {
+    // If there are no other listeners, an exit is coming!
+    // Simplest way: remove us and then re-send the signal.
+    // We know that this will kill the process, so we can
+    // safely emit now.
+    var listeners = process.listeners(sig);
+    if (listeners.length === emitter.count) {
+      unload();
+      emit('exit', null, sig);
+      /* istanbul ignore next */
+      emit('afterexit', null, sig);
+      /* istanbul ignore next */
+      process.kill(process.pid, sig);
+    }
+  };
+});
+
+var signals_1 = function () {
+  return signals
+};
+
+var load_1 = load;
+
+var loaded = false;
+
+function load () {
+  if (loaded) {
+    return
+  }
+  loaded = true;
+
+  // This is the number of onSignalExit's that are in play.
+  // It's important so that we can count the correct number of
+  // listeners on signals, and don't wait for the other one to
+  // handle it instead of us.
+  emitter.count += 1;
+
+  signals = signals.filter(function (sig) {
+    try {
+      process.on(sig, sigListeners[sig]);
+      return true
+    } catch (er) {
+      return false
+    }
+  });
+
+  process.emit = processEmit;
+  process.reallyExit = processReallyExit;
+}
+
+var originalProcessReallyExit = process.reallyExit;
+function processReallyExit (code) {
+  process.exitCode = code || 0;
+  emit('exit', process.exitCode, null);
+  /* istanbul ignore next */
+  emit('afterexit', process.exitCode, null);
+  /* istanbul ignore next */
+  originalProcessReallyExit.call(process, process.exitCode);
+}
+
+var originalProcessEmit = process.emit;
+function processEmit (ev, arg) {
+  if (ev === 'exit') {
+    if (arg !== undefined) {
+      process.exitCode = arg;
+    }
+    var ret = originalProcessEmit.apply(this, arguments);
+    emit('exit', process.exitCode, null);
+    /* istanbul ignore next */
+    emit('afterexit', process.exitCode, null);
+    return ret
+  } else {
+    return originalProcessEmit.apply(this, arguments)
+  }
+}
+
+index$50.unload = unload_1;
+index$50.signals = signals_1;
+index$50.load = load_1;
+
+// The Node team wants to deprecate `process.bind(...)`.
+//   https://github.com/nodejs/node/pull/2768
+//
+// However, we need the 'uv' binding for errname support.
+// This is a defensive wrapper around it so `execa` will not fail entirely if it stops working someday.
+//
+// If this ever stops working. See: https://github.com/sindresorhus/execa/issues/31#issuecomment-215939939 for another possible solution.
+let uv;
+
+try {
+	uv = process.binding('uv');
+
+	if (typeof uv.errname !== 'function') {
+		throw new Error('uv.errname is not a function');
+	}
+} catch (err) {
+	console.error('execa/lib/errname: unable to establish process.binding(\'uv\')', err);
+	uv = null;
+}
+
+function errname(uv, code) {
+	if (uv) {
+		return uv.errname(code);
+	}
+
+	if (!(code < 0)) {
+		throw new Error('err >= 0');
+	}
+
+	return `Unknown system error ${code}`;
+}
+
+var errname_1 = code => errname(uv, code);
+
+// used for testing the fallback behavior
+var __test__ = errname;
+
+errname_1.__test__ = __test__;
+
+var index$20 = createCommonjsModule(function (module) {
+'use strict';
+const childProcess = child_process;
+const util = require$$0;
+const crossSpawn = index$22;
+const stripEof = index$38;
+const npmRunPath = index$40;
+const isStream = index$44;
+const _getStream = index$46;
+const pFinally = index$48;
+const onExit = index$50;
+const errname = errname_1;
+
+const TEN_MEGABYTES = 1000 * 1000 * 10;
+
+function handleArgs(cmd, args, opts) {
+	let parsed;
+
+	if (opts && opts.__winShell === true) {
+		delete opts.__winShell;
+		parsed = {
+			command: cmd,
+			args,
+			options: opts,
+			file: cmd,
+			original: cmd
+		};
+	} else {
+		parsed = crossSpawn._parse(cmd, args, opts);
+	}
+
+	opts = Object.assign({
+		maxBuffer: TEN_MEGABYTES,
+		stripEof: true,
+		preferLocal: true,
+		encoding: 'utf8',
+		reject: true,
+		cleanup: true
+	}, parsed.options);
+
+	if (opts.preferLocal) {
+		opts.env = npmRunPath.env(opts);
+	}
+
+	return {
+		cmd: parsed.command,
+		args: parsed.args,
+		opts
+	};
+}
+
+function handleInput(spawned, opts) {
+	const input = opts.input;
+
+	if (input === null || input === undefined) {
+		return;
+	}
+
+	if (isStream(input)) {
+		input.pipe(spawned.stdin);
+	} else {
+		spawned.stdin.end(input);
+	}
+}
+
+function handleOutput(opts, val) {
+	if (val && opts.stripEof) {
+		val = stripEof(val);
+	}
+
+	return val;
+}
+
+function handleShell(fn, cmd, opts) {
+	let file = '/bin/sh';
+	let args = ['-c', cmd];
+
+	opts = Object.assign({}, opts);
+
+	if (process.platform === 'win32') {
+		opts.__winShell = true;
+		file = process.env.comspec || 'cmd.exe';
+		args = ['/s', '/c', `"${cmd}"`];
+		opts.windowsVerbatimArguments = true;
+	}
+
+	if (opts.shell) {
+		file = opts.shell;
+		delete opts.shell;
+	}
+
+	return fn(file, args, opts);
+}
+
+function getStream(process, stream$$1, encoding, maxBuffer) {
+	if (!process[stream$$1]) {
+		return null;
+	}
+
+	let ret;
+
+	if (encoding) {
+		ret = _getStream(process[stream$$1], {
+			encoding,
+			maxBuffer
+		});
+	} else {
+		ret = _getStream.buffer(process[stream$$1], {maxBuffer});
+	}
+
+	return ret.catch(err => {
+		err.stream = stream$$1;
+		err.message = `${stream$$1} ${err.message}`;
+		throw err;
+	});
+}
+
+module.exports = (cmd, args, opts) => {
+	let joinedCmd = cmd;
+
+	if (Array.isArray(args) && args.length > 0) {
+		joinedCmd += ' ' + args.join(' ');
+	}
+
+	const parsed = handleArgs(cmd, args, opts);
+	const encoding = parsed.opts.encoding;
+	const maxBuffer = parsed.opts.maxBuffer;
+
+	let spawned;
+	try {
+		spawned = childProcess.spawn(parsed.cmd, parsed.args, parsed.opts);
+	} catch (err) {
+		return Promise.reject(err);
+	}
+
+	let removeExitHandler;
+	if (parsed.opts.cleanup) {
+		removeExitHandler = onExit(() => {
+			spawned.kill();
+		});
+	}
+
+	let timeoutId = null;
+	let timedOut = false;
+
+	const cleanupTimeout = () => {
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+			timeoutId = null;
+		}
+	};
+
+	if (parsed.opts.timeout > 0) {
+		timeoutId = setTimeout(() => {
+			timeoutId = null;
+			timedOut = true;
+			spawned.kill(parsed.killSignal);
+		}, parsed.opts.timeout);
+	}
+
+	const processDone = new Promise(resolve => {
+		spawned.on('exit', (code, signal) => {
+			cleanupTimeout();
+			resolve({code, signal});
+		});
+
+		spawned.on('error', err => {
+			cleanupTimeout();
+			resolve({err});
+		});
+	});
+
+	function destroy() {
+		if (spawned.stdout) {
+			spawned.stdout.destroy();
+		}
+
+		if (spawned.stderr) {
+			spawned.stderr.destroy();
+		}
+	}
+
+	const promise = pFinally(Promise.all([
+		processDone,
+		getStream(spawned, 'stdout', encoding, maxBuffer),
+		getStream(spawned, 'stderr', encoding, maxBuffer)
+	]).then(arr => {
+		const result = arr[0];
+		const stdout = arr[1];
+		const stderr = arr[2];
+
+		let err = result.err;
+		const code = result.code;
+		const signal = result.signal;
+
+		if (removeExitHandler) {
+			removeExitHandler();
+		}
+
+		if (err || code !== 0 || signal !== null) {
+			if (!err) {
+				err = new Error(`Command failed: ${joinedCmd}\n${stderr}${stdout}`);
+				err.code = code < 0 ? errname(code) : code;
+			}
+
+			// TODO: missing some timeout logic for killed
+			// https://github.com/nodejs/node/blob/master/lib/child_process.js#L203
+			// err.killed = spawned.killed || killed;
+			err.killed = err.killed || spawned.killed;
+
+			err.stdout = stdout;
+			err.stderr = stderr;
+			err.failed = true;
+			err.signal = signal || null;
+			err.cmd = joinedCmd;
+			err.timedOut = timedOut;
+
+			if (!parsed.opts.reject) {
+				return err;
+			}
+
+			throw err;
+		}
+
+		return {
+			stdout: handleOutput(parsed.opts, stdout),
+			stderr: handleOutput(parsed.opts, stderr),
+			code: 0,
+			failed: false,
+			killed: false,
+			signal: null,
+			cmd: joinedCmd,
+			timedOut: false
+		};
+	}), destroy);
+
+	crossSpawn._enoent.hookChildProcess(spawned, parsed);
+
+	handleInput(spawned, parsed.opts);
+
+	spawned.then = promise.then.bind(promise);
+	spawned.catch = promise.catch.bind(promise);
+
+	return spawned;
+};
+
+module.exports.stdout = function () {
+	// TODO: set `stderr: 'ignore'` when that option is implemented
+	return module.exports.apply(null, arguments).then(x => x.stdout);
+};
+
+module.exports.stderr = function () {
+	// TODO: set `stdout: 'ignore'` when that option is implemented
+	return module.exports.apply(null, arguments).then(x => x.stderr);
+};
+
+module.exports.shell = (cmd, opts) => handleShell(module.exports, cmd, opts);
+
+module.exports.sync = (cmd, args, opts) => {
+	const parsed = handleArgs(cmd, args, opts);
+
+	if (isStream(parsed.opts.input)) {
+		throw new TypeError('The `input` option cannot be a stream in sync mode');
+	}
+
+	const result = childProcess.spawnSync(parsed.cmd, parsed.args, parsed.opts);
+
+	if (result.error || result.status !== 0) {
+		throw (result.error || new Error(result.stderr === '' ? result.stdout : result.stderr));
+	}
+
+	result.stdout = handleOutput(parsed.opts, result.stdout);
+	result.stderr = handleOutput(parsed.opts, result.stderr);
+
+	return result;
+};
+
+module.exports.shellSync = (cmd, opts) => handleShell(module.exports.sync, cmd, opts);
+
+module.exports.spawn = util.deprecate(module.exports, 'execa.spawn() is deprecated. Use execa() instead.');
+});
+
+var path$15 = require$$0$2;
+var fs$12 = require$$0$1;
 var _0777 = parseInt('0777', 8);
 
-var index$20 = mkdirP.mkdirp = mkdirP.mkdirP = mkdirP;
+var index$52 = mkdirP.mkdirp = mkdirP.mkdirP = mkdirP;
 
 function mkdirP (p, opts, f, made) {
     if (typeof opts === 'function') {
@@ -16851,7 +19509,7 @@ function mkdirP (p, opts, f, made) {
     }
     
     var mode = opts.mode;
-    var xfs = opts.fs || fs$6;
+    var xfs = opts.fs || fs$12;
     
     if (mode === undefined) {
         mode = _0777 & (~process.umask());
@@ -16859,7 +19517,7 @@ function mkdirP (p, opts, f, made) {
     if (!made) made = null;
     
     var cb = f || function () {};
-    p = path$12.resolve(p);
+    p = path$15.resolve(p);
     
     xfs.mkdir(p, mode, function (er) {
         if (!er) {
@@ -16868,7 +19526,7 @@ function mkdirP (p, opts, f, made) {
         }
         switch (er.code) {
             case 'ENOENT':
-                mkdirP(path$12.dirname(p), opts, function (er, made) {
+                mkdirP(path$15.dirname(p), opts, function (er, made) {
                     if (er) cb(er, made);
                     else mkdirP(p, opts, cb, made);
                 });
@@ -16895,14 +19553,14 @@ mkdirP.sync = function sync (p, opts, made) {
     }
     
     var mode = opts.mode;
-    var xfs = opts.fs || fs$6;
+    var xfs = opts.fs || fs$12;
     
     if (mode === undefined) {
         mode = _0777 & (~process.umask());
     }
     if (!made) made = null;
 
-    p = path$12.resolve(p);
+    p = path$15.resolve(p);
 
     try {
         xfs.mkdirSync(p, mode);
@@ -16911,7 +19569,7 @@ mkdirP.sync = function sync (p, opts, made) {
     catch (err0) {
         switch (err0.code) {
             case 'ENOENT' :
-                made = sync(path$12.dirname(p), opts, made);
+                made = sync(path$15.dirname(p), opts, made);
                 sync(p, opts, made);
                 break;
 
@@ -16934,9 +19592,9 @@ mkdirP.sync = function sync (p, opts, made) {
     return made;
 };
 
-const mkdirp = index$20;
-const fs$5 = require$$0$1;
-const path$11 = require$$0$2;
+const mkdirp = index$52;
+const fs$11 = require$$0$1;
+const path$14 = require$$0$2;
 const {concat: concat$4, difference: difference$3} = index$6;
 const la$1 = index$8;
 const is$4 = checkMoreTypes;
@@ -16956,7 +19614,7 @@ function mkdir$1 (name) {
 function saveJSON$1 (filename, json) {
   return new Promise((resolve, reject) => {
     const text = JSON.stringify(json, null, 2);
-    fs$5.writeFile(filename, text, 'utf8', (err) => {
+    fs$11.writeFile(filename, text, 'utf8', (err) => {
       if (err) {
         return reject(err)
       }
@@ -16967,7 +19625,7 @@ function saveJSON$1 (filename, json) {
 
 function loadJSON (filename) {
   return new Promise((resolve, reject) => {
-    fs$5.readFile(filename, 'utf8', (err, text) => {
+    fs$11.readFile(filename, 'utf8', (err, text) => {
       if (err) {
         return reject(err)
       }
@@ -16982,7 +19640,7 @@ function isProduction () {
 }
 
 function toInstall$1 () {
-  const filename = path$11.join(process.cwd(), 'package.json');
+  const filename = path$14.join(process.cwd(), 'package.json');
   return loadJSON(filename).then(pkg => {
     const deps = Object.keys(pkg.dependencies || {});
     const devDeps = Object.keys(pkg.devDependencies || {});
@@ -17015,6 +19673,7 @@ const semver = semver$1;
 const la = index$8;
 const is = checkMoreTypes;
 const glob = globAll_1;
+const execa = index$20;
 
 const {mkdir, saveJSON, findMissing} = utils;
 
@@ -17030,7 +19689,16 @@ function getVersion (folder) {
         }
         const json = JSON.parse(s);
         const main = json.main || 'index.js';
-        const fullMain = path.isAbsolute(main) ? main : path.join(folder, main);
+        debug('main %s', main);
+        const withExtension = main.endsWith('index') ? main + '.js' : main;
+
+        let fullMain = path.isAbsolute(withExtension)
+          ? withExtension : path.join(folder, withExtension);
+
+        if (!fs.existsSync(fullMain)) {
+          fullMain += '.js';
+        }
+
         if (!fs.existsSync(fullMain)) {
           const notFound = new Error(`Cannot find main file ${fullMain}`);
           return reject(notFound)
@@ -17072,7 +19740,6 @@ function findModules (names) {
     .then(R.groupBy(R.prop('name')))
     .then(R.mapObjIndexed(latestVersion))
     .then(found => {
-      console.log('found', found);
       const foundNames = R.keys(found);
       const missing = findMissing(names, foundNames);
       if (is.not.empty(missing)) {
@@ -17091,7 +19758,7 @@ function findModules (names) {
 
 function print (modules) {
   const different = R.uniqBy(R.prop('version'))(modules);
-  debug('%d different version', different.length);
+  debug('%d different version(s)', different.length);
   debug(R.project(['version'], different));
 }
 
@@ -17118,18 +19785,36 @@ function installMain (p) {
     }).then(R.always(p))
 }
 
+function haveModules (list) {
+  return Promise.all(list.map(installMain))
+    .then(() => {
+      console.log('have %d module(s)', list.length);
+      list.forEach(p => {
+        console.log(`${p.name}@${p.version}`);
+      });
+    })
+}
+
+function npmInstall (list) {
+  // TODO read flags from command line, like --save and -S
+  return Promise.all(list.map(name =>
+    execa.shell(`npm install ${name}`)
+  )).then(() => {
+    if (list.length) {
+      console.log('npm installed %s', list.join('\n'));
+    }
+  })
+}
+
 function installModules ({found, missing}) {
   la(is.object(found), 'expected found modules object', found);
   la(is.strings(missing), 'expected list of missing names', missing);
   const list = R.values(found);
 
-  return Promise.all(list.map(installMain))
-    .then(() => {
-      console.log('installed %d module(s)', list.length);
-      list.forEach(p => {
-        console.log(`${p.name}@${p.version}`);
-      });
-    })
+  return Promise.all([
+    haveModules(list),
+    npmInstall(missing)
+  ])
 }
 
 function findAndInstall$1 (names) {

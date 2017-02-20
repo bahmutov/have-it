@@ -10,6 +10,7 @@ const semver = require('semver')
 const la = require('lazy-ass')
 const is = require('check-more-types')
 const glob = require('glob-all')
+const execa = require('execa')
 
 const {mkdir, saveJSON, findMissing} = require('./utils')
 
@@ -25,7 +26,16 @@ function getVersion (folder) {
         }
         const json = JSON.parse(s)
         const main = json.main || 'index.js'
-        const fullMain = path.isAbsolute(main) ? main : path.join(folder, main)
+        debug('main %s', main)
+        const withExtension = main.endsWith('index') ? main + '.js' : main
+
+        let fullMain = path.isAbsolute(withExtension)
+          ? withExtension : path.join(folder, withExtension)
+
+        if (!fs.existsSync(fullMain)) {
+          fullMain += '.js'
+        }
+
         if (!fs.existsSync(fullMain)) {
           const notFound = new Error(`Cannot find main file ${fullMain}`)
           return reject(notFound)
@@ -112,18 +122,36 @@ function installMain (p) {
     }).then(R.always(p))
 }
 
+function haveModules (list) {
+  return Promise.all(list.map(installMain))
+    .then(() => {
+      console.log('have %d module(s)', list.length)
+      list.forEach(p => {
+        console.log(`${p.name}@${p.version}`)
+      })
+    })
+}
+
+function npmInstall (list) {
+  // TODO read flags from command line, like --save and -S
+  return Promise.all(list.map(name =>
+    execa.shell(`npm install ${name}`)
+  )).then(() => {
+    if (list.length) {
+      console.log('npm installed %s', list.join('\n'))
+    }
+  })
+}
+
 function installModules ({found, missing}) {
   la(is.object(found), 'expected found modules object', found)
   la(is.strings(missing), 'expected list of missing names', missing)
   const list = R.values(found)
 
-  return Promise.all(list.map(installMain))
-    .then(() => {
-      console.log('installed %d module(s)', list.length)
-      list.forEach(p => {
-        console.log(`${p.name}@${p.version}`)
-      })
-    })
+  return Promise.all([
+    haveModules(list),
+    npmInstall(missing)
+  ])
 }
 
 function findAndInstall (names) {

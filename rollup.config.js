@@ -17,5 +17,8 @@ export default {
   dest: 'dist/have-it.js',
   format: 'cjs',
   banner: '#!/usr/bin/env node',
-  external: ['fs', 'path', 'assert', 'util', 'events', 'tty', 'net']
+  external: [
+    'fs', 'path', 'assert', 'util', 'events', 'tty', 'net',
+    'stream', 'child_process', 'os'
+  ]
 }
