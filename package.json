@@ -15,6 +15,7 @@
         "npm run ban"
       ],
       "pre-push": [
+        "npm run e2e",
         "npm run secure",
         "npm run license",
         "npm run ban -- --all",
@@ -65,7 +66,8 @@
     "semantic-release": "semantic-release pre && npm publish && semantic-release post",
     "postinstall": "echo \"have-it: set HAVE environment variable\nto the root folder with most packages\n\"",
     "build": "rollup -c rollup.config.js",
-    "prebuild": "npm run lint"
+    "prebuild": "npm run lint",
+    "e2e": "./test/e2e.sh"
   },
   "devDependencies": {
     "ban-sensitive-files": "1.9.0",

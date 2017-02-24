@@ -122,6 +122,12 @@ module loader.
   <p>Nothing, you just use `npm install` there</p>
 </details>
 
+## Debugging
+
+Run this tool with `DEBUG=have-it have ...` environment variable.
+
+To run [e2e test](test/e2e.sh) use `npm run e2e`
+
 ### Small print
 
 Author: Gleb Bahmutov &lt;gleb.bahmutov@gmail.com&gt; &copy; 2017
