@@ -27,30 +27,33 @@ yarn takes 3 seconds, and `have-it` takes 250ms (0.25 seconds)
 in `$HOME/git` folder. Thus I set `export HAVE=$HOME/git`. By default it
 will use `$HOME` value as the root.
 
-```
-$HOME
-  /git
-    /projectA
-      /node_modules
-    /projectB
-      /node_modules
-    /projectC
-      /node_modules
-```
+    ```
+    $HOME
+      /git
+        /projectA
+          /node_modules
+        /projectB
+          /node_modules
+        /projectC
+          /node_modules
+    ```
 
 3. Install something with `have <name>`. For example
 
-```sh
-$ time have lodash
-have-it lodash
-have 1 module(s)
-lodash@4.17.4
+    ```sh
+    $ time have lodash
+    have-it lodash
+    have 1 module(s)
+    lodash@4.17.4
 
-real  0m0.240s
-```
+    real  0m0.240s
+    ```
 
 For comparison `$ time npm i lodash` prints `real 0m1.909s` - a speed up
 of 10 times!
+
+You can pass typical NPM flags to save the installed version
+`-S --save -D --save-dev`.
 
 ## Installing dependencies from package.json
 
