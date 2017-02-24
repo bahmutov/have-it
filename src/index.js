@@ -11,6 +11,7 @@ const la = require('lazy-ass')
 const is = require('check-more-types')
 const glob = require('glob-all')
 const execa = require('execa')
+const parse = require('parse-package-name')
 
 const {mkdir, saveJSON, findMissing, saveVersions} = require('./utils')
 
@@ -67,21 +68,52 @@ const latestVersion = R.pipe(
   R.last
 )
 
-// TODO return found / not found modules
-function findModules (names) {
-  la(is.strings(names), 'expected names', names)
+const pickFoundVersion = target => found => {
+  la(is.array(found), 'expected list of found items', found)
+
+  if (is.not.semver(target)) {
+    return latestVersion(found)
+  }
+  debug('need to pick version %s', target)
+  debug('from list with %d found items', found.length)
+  const sameVersion = R.propEq('version', target)
+  return R.find(sameVersion, found)
+}
+
+// TODO unit test this
+const pickFoundVersions = targets => found => {
+  debug('only need the following targets', targets)
+
+  const pickInstall = (found, name) => {
+    const target = R.find(R.propEq('name', name), targets)
+    const picked = pickFoundVersion(target.version)(found)
+    return picked
+  }
+
+  return R.mapObjIndexed(pickInstall, found)
+}
+
+function findModules (searchNames) {
+  la(is.strings(searchNames), 'expected names to find', searchNames)
+
+  // names could potentially have version part
+  const parsedNames = searchNames.map(parse)
+  const names = R.pluck('name', parsedNames)
+  debug('just names', names)
+
   const searches = names.map(name => `${rootFolder}/*/node_modules/${name}`)
   const folders = glob.sync(searches)
   return Promise.all(folders.map(getVersionSafe))
     .then(R.filter(R.is(Object)))
     .then(R.groupBy(R.prop('name')))
-    .then(R.mapObjIndexed(latestVersion))
-    .then(found => {
+    .then(pickFoundVersions(parsedNames))
+    .then(results => {
+      const found = R.pickBy(is.object, results)
       const foundNames = R.keys(found)
-      const missing = findMissing(names, foundNames)
+      const missing = findMissing(parsedNames, foundNames)
       if (is.not.empty(missing)) {
         console.log('You do not have %d module(s): %s',
-          missing.length, missing.join(', '))
+          missing.length, missing.map(R.prop('name')).join(', '))
         debug('all names to find', names)
         debug('found names', foundNames)
         debug('missing names', missing)
@@ -150,12 +182,15 @@ function haveModules (list, options) {
     })
 }
 
+const fullInstallName = parsed =>
+  parsed.version ? `${parsed.name}@${parsed.version}` : parsed.name
+
 function npmInstall (list, options) {
   if (is.empty(list)) {
     return Promise.resolve()
   }
   const flags = options.join(' ')
-  const names = list.join(' ')
+  const names = list.map(fullInstallName).join(' ')
   const cmd = `npm install ${flags} ${names}`
   console.log(cmd)
   return execa.shell(cmd)
@@ -163,7 +198,8 @@ function npmInstall (list, options) {
 
 const installModules = options => ({found, missing}) => {
   la(is.object(found), 'expected found modules object', found)
-  la(is.strings(missing), 'expected list of missing names', missing)
+  la(is.array(missing), 'expected list of missing names', missing)
+
   const list = R.values(found)
 
   return haveModules(list, options)

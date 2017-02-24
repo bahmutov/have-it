@@ -87,7 +87,7 @@ module loader.
   save installed name version in `package.json`
 * [ ] [#9](https://github.com/bahmutov/have-it/issues/9)
   respect `package.json` versions when installing
-* [ ] [#10](https://github.com/bahmutov/have-it/issues/10)
+* [x] [#10](https://github.com/bahmutov/have-it/issues/10)
   allow installing specific version from CLI `have lodash@3.0.0`
 
 ## Related projects

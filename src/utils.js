@@ -1,9 +1,12 @@
+'use strict'
+
 const mkdirp = require('mkdirp')
 const fs = require('fs')
 const path = require('path')
 const {concat, difference} = require('ramda')
 const la = require('lazy-ass')
 const is = require('check-more-types')
+const R = require('ramda')
 
 function mkdir (name) {
   return new Promise((resolve, reject) => {
@@ -55,10 +58,16 @@ function toInstall () {
   })
 }
 
+// returns just the list of missing objects
 function findMissing (names, found) {
-  la(is.strings(names), 'wrong names', names)
+  la(is.array(names), 'wrong names', names)
   la(is.strings(found), 'wrong installed', found)
-  return difference(names, found)
+
+  // each object in "names" is parsed object
+  // {name, version}
+
+  const missingNames = difference(R.pluck('name', names), found)
+  return missingNames.map(name => R.find(R.propEq('name', name), names))
 }
 
 function saveVersions (list, dev) {

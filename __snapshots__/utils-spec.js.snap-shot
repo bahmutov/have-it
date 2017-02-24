@@ -1,4 +1,6 @@
 exports['finds missing deps 1'] = [
-  "bar"
+  {
+    "name": "bar"
+  }
 ]
 

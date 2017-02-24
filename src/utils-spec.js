@@ -13,7 +13,11 @@ describe.only('findMissing', () => {
   })
 
   it('finds missing deps', () => {
-    const names = ['foo', 'bar']
+    const names = [{
+      name: 'foo'
+    }, {
+      name: 'bar'
+    }]
     const found = ['foo']
     const missing = findMissing(names, found)
     snapshot(missing)

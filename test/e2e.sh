@@ -44,4 +44,9 @@ DEBUG=have-it have lodash --save
 echo "Trying to use the program"
 node index.js
 
+echo "Installing specific version of lodash"
+DEBUG=have-it HAVE=$HAVE have lodash@3.10.0 --save
+echo "Trying to use the program"
+node index.js
+
 echo "All done testing have-it in $folder"
