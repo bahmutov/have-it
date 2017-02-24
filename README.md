@@ -128,6 +128,26 @@ Run this tool with `DEBUG=have-it have ...` environment variable.
 
 To run [e2e test](test/e2e.sh) use `npm run e2e`
 
+To avoid building a single "dist" file during local development, add
+a new alias to the `package.json`
+
+```json
+{
+  "bin": {
+    "have-it": "dist/have-it.js",
+    "have": "dist/have-it.js",
+    "_have": "bin/_have-it.js"
+  }
+}
+```
+
+and use this alias for local work
+
+```sh
+npm link
+_have lodash
+```
+
 ### Small print
 
 Author: Gleb Bahmutov &lt;gleb.bahmutov@gmail.com&gt; &copy; 2017

@@ -33,8 +33,7 @@
   ],
   "bin": {
     "have-it": "dist/have-it.js",
-    "have": "dist/have-it.js",
-    "_have": "bin/_have-it.js"
+    "have": "dist/have-it.js"
   },
   "homepage": "https://github.com/bahmutov/have-it#readme",
   "keywords": [

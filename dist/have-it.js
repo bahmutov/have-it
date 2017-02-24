@@ -52,7 +52,7 @@ var index$4 = function (val, options) {
   options = options || {};
   var type = typeof val;
   if (type === 'string' && val.length > 0) {
-    return parse(val)
+    return parse$1(val)
   } else if (type === 'number' && isNaN(val) === false) {
     return options.long ?
 			fmtLong(val) :
@@ -69,7 +69,7 @@ var index$4 = function (val, options) {
  * @api private
  */
 
-function parse(str) {
+function parse$1(str) {
   str = String(str);
   if (str.length > 10000) {
     return
@@ -14270,9 +14270,9 @@ function braceExpand (pattern, options) {
 // when it is the *only* thing in a path portion.  Otherwise, any series
 // of * is equivalent to a single *.  Globstar behavior is enabled by
 // default, and can be disabled by setting options.noglobstar.
-Minimatch$1.prototype.parse = parse$1;
+Minimatch$1.prototype.parse = parse$2;
 var SUBPARSE = {};
-function parse$1 (pattern, isSub) {
+function parse$2 (pattern, isSub) {
   if (pattern.length > 1024 * 64) {
     throw new TypeError('pattern is too long')
   }
@@ -18303,7 +18303,7 @@ function parseShell(parsed) {
 
 // ------------------------------------------------
 
-function parse$3(command, args, options) {
+function parse$4(command, args, options) {
     var parsed;
 
     // Normalize arguments, similar to nodejs
@@ -18328,7 +18328,7 @@ function parse$3(command, args, options) {
     return options.shell ? parseShell(parsed) : parseNonShell(parsed);
 }
 
-var parse_1 = parse$3;
+var parse_1 = parse$4;
 
 var isWin$1 = process.platform === 'win32';
 var resolveCommand$2 = resolveCommand_1;
@@ -18524,7 +18524,7 @@ var stringify = function stringify (o) {
     return JSON.stringify(o)
 };
 
-var parse$4 = function (s) {
+var parse$5 = function (s) {
   return JSON.parse(s, function (key, value) {
     if('string' === typeof value) {
       if(/^:base64:/.test(value))
@@ -18538,7 +18538,7 @@ var parse$4 = function (s) {
 
 var index$32 = {
 	stringify: stringify,
-	parse: parse$4
+	parse: parse$5
 };
 
 var childProcess = child_process;
@@ -18678,7 +18678,7 @@ function spawnSyncFallback(cmd, commandArgs, options) {
 var index$30 = child_process.spawnSync || spawnSync$1;
 
 var cp = child_process;
-var parse$2 = parse_1;
+var parse$3 = parse_1;
 var enoent = enoent$1;
 
 var cpSpawnSync = cp.spawnSync;
@@ -18688,7 +18688,7 @@ function spawn(command, args, options) {
     var spawned;
 
     // Parse the arguments
-    parsed = parse$2(command, args, options);
+    parsed = parse$3(command, args, options);
 
     // Spawn the child process
     spawned = cp.spawn(parsed.command, parsed.args, parsed.options);
@@ -18717,7 +18717,7 @@ function spawnSync(command, args, options) {
     }
 
     // Parse the arguments
-    parsed = parse$2(command, args, options);
+    parsed = parse$3(command, args, options);
 
     // Spawn the child process
     result = cpSpawnSync(parsed.command, parsed.args, parsed.options);
@@ -18732,7 +18732,7 @@ var index$22 = spawn;
 var spawn_1 = spawn;
 var sync$2 = spawnSync;
 
-var _parse = parse$2;
+var _parse = parse$3;
 var _enoent = enoent;
 
 index$22.spawn = spawn_1;
@@ -19493,11 +19493,32 @@ module.exports.shellSync = (cmd, opts) => handleShell(module.exports.sync, cmd, 
 module.exports.spawn = util.deprecate(module.exports, 'execa.spawn() is deprecated. Use execa() instead.');
 });
 
+const RE_SCOPED = /^(@[^/]+\/[^/@]+)(?:\/([^@]+))?(?:@([\s\S]+))?/;
+const RE_NORMAL = /^([^/@]+)(?:\/([^@]+))?(?:@([\s\S]+))?/;
+
+var index$52 = function (input) {
+  if (typeof input !== 'string') {
+    throw new TypeError('Expected a string')
+  }
+
+  const matched = input.charAt(0) === '@' ? input.match(RE_SCOPED) : input.match(RE_NORMAL);
+
+  if (!matched) {
+    throw new Error(`[parse-package-name] "${input}" is not a valid string`)
+  }
+
+  return {
+    name: matched[1],
+    path: matched[2] || '',
+    version: matched[3] || ''
+  }
+};
+
 var path$15 = require$$0$2;
 var fs$12 = require$$0$1;
 var _0777 = parseInt('0777', 8);
 
-var index$52 = mkdirP.mkdirp = mkdirP.mkdirP = mkdirP;
+var index$54 = mkdirP.mkdirp = mkdirP.mkdirP = mkdirP;
 
 function mkdirP (p, opts, f, made) {
     if (typeof opts === 'function') {
@@ -19592,12 +19613,13 @@ mkdirP.sync = function sync (p, opts, made) {
     return made;
 };
 
-const mkdirp = index$52;
+const mkdirp = index$54;
 const fs$11 = require$$0$1;
 const path$14 = require$$0$2;
 const {concat: concat$4, difference: difference$3} = index$6;
 const la$1 = index$8;
 const is$4 = checkMoreTypes;
+const R$2 = index$6;
 
 function mkdir$1 (name) {
   return new Promise((resolve, reject) => {
@@ -19649,10 +19671,16 @@ function toInstall$1 () {
   })
 }
 
+// returns just the list of missing objects
 function findMissing$1 (names, found) {
-  la$1(is$4.strings(names), 'wrong names', names);
+  la$1(is$4.array(names), 'wrong names', names);
   la$1(is$4.strings(found), 'wrong installed', found);
-  return difference$3(names, found)
+
+  // each object in "names" is parsed object
+  // {name, version}
+
+  const missingNames = difference$3(R$2.pluck('name', names), found);
+  return missingNames.map(name => R$2.find(R$2.propEq('name', name), names))
 }
 
 function saveVersions$1 (list, dev) {
@@ -19690,6 +19718,7 @@ const la = index$8;
 const is = checkMoreTypes;
 const glob = globAll_1;
 const execa = index$20;
+const parse = index$52;
 
 const {mkdir, saveJSON, findMissing, saveVersions} = utils;
 
@@ -19746,21 +19775,52 @@ const latestVersion = R$1.pipe(
   R$1.last
 );
 
-// TODO return found / not found modules
-function findModules (names) {
-  la(is.strings(names), 'expected names', names);
+const pickFoundVersion = target => found => {
+  la(is.array(found), 'expected list of found items', found);
+
+  if (is.not.semver(target)) {
+    return latestVersion(found)
+  }
+  debug('need to pick version %s', target);
+  debug('from list with %d found items', found.length);
+  const sameVersion = R$1.propEq('version', target);
+  return R$1.find(sameVersion, found)
+};
+
+// TODO unit test this
+const pickFoundVersions = targets => found => {
+  debug('only need the following targets', targets);
+
+  const pickInstall = (found, name) => {
+    const target = R$1.find(R$1.propEq('name', name), targets);
+    const picked = pickFoundVersion(target.version)(found);
+    return picked
+  };
+
+  return R$1.mapObjIndexed(pickInstall, found)
+};
+
+function findModules (searchNames) {
+  la(is.strings(searchNames), 'expected names to find', searchNames);
+
+  // names could potentially have version part
+  const parsedNames = searchNames.map(parse);
+  const names = R$1.pluck('name', parsedNames);
+  debug('just names', names);
+
   const searches = names.map(name => `${rootFolder}/*/node_modules/${name}`);
   const folders = glob.sync(searches);
   return Promise.all(folders.map(getVersionSafe))
     .then(R$1.filter(R$1.is(Object)))
     .then(R$1.groupBy(R$1.prop('name')))
-    .then(R$1.mapObjIndexed(latestVersion))
-    .then(found => {
+    .then(pickFoundVersions(parsedNames))
+    .then(results => {
+      const found = R$1.pickBy(is.object, results);
       const foundNames = R$1.keys(found);
-      const missing = findMissing(names, foundNames);
+      const missing = findMissing(parsedNames, foundNames);
       if (is.not.empty(missing)) {
         console.log('You do not have %d module(s): %s',
-          missing.length, missing.join(', '));
+          missing.length, missing.map(R$1.prop('name')).join(', '));
         debug('all names to find', names);
         debug('found names', foundNames);
         debug('missing names', missing);
@@ -19829,12 +19889,15 @@ function haveModules (list, options) {
     })
 }
 
+const fullInstallName = parsed =>
+  parsed.version ? `${parsed.name}@${parsed.version}` : parsed.name;
+
 function npmInstall (list, options) {
   if (is.empty(list)) {
     return Promise.resolve()
   }
   const flags = options.join(' ');
-  const names = list.join(' ');
+  const names = list.map(fullInstallName).join(' ');
   const cmd = `npm install ${flags} ${names}`;
   console.log(cmd);
   return execa.shell(cmd)
@@ -19842,7 +19905,8 @@ function npmInstall (list, options) {
 
 const installModules = options => ({found, missing}) => {
   la(is.object(found), 'expected found modules object', found);
-  la(is.strings(missing), 'expected list of missing names', missing);
+  la(is.array(missing), 'expected list of missing names', missing);
+
   const list = R$1.values(found);
 
   return haveModules(list, options)
