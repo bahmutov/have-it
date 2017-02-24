@@ -29,11 +29,13 @@
     "node": ">=6"
   },
   "files": [
-    "dist"
+    "dist",
+    "bin/_have-it.js"
   ],
   "bin": {
     "have-it": "dist/have-it.js",
-    "have": "dist/have-it.js"
+    "have": "dist/have-it.js",
+    "_have": "bin/_have-it.js"
   },
   "homepage": "https://github.com/bahmutov/have-it#readme",
   "keywords": [
