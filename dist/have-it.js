@@ -19867,7 +19867,7 @@ const saveDependencies = options =>
 const saveDevDependencies = options =>
   options.includes('-D') || options.includes('--save-dev');
 
-function haveModules (list, options) {
+function haveModules (list, options = []) {
   la(is.strings(options), 'expected list of options', options);
 
   const nameAndVersion = R$1.project(['name', 'version'])(list);
