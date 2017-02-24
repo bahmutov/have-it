@@ -19639,9 +19639,10 @@ function isProduction () {
   return process.env.NODE_ENV === 'production'
 }
 
+const packageFilename = path$14.join(process.cwd(), 'package.json');
+
 function toInstall$1 () {
-  const filename = path$14.join(process.cwd(), 'package.json');
-  return loadJSON(filename).then(pkg => {
+  return loadJSON(packageFilename).then(pkg => {
     const deps = Object.keys(pkg.dependencies || {});
     const devDeps = Object.keys(pkg.devDependencies || {});
     return isProduction() ? deps : concat$4(deps, devDeps)
@@ -19654,13 +19655,28 @@ function findMissing$1 (names, found) {
   return difference$3(names, found)
 }
 
+function saveVersions$1 (list, dev) {
+  la$1(is$4.array(list), 'missing list to save');
+
+  const key = dev ? 'devDependencies' : 'dependencies';
+  return loadJSON(packageFilename).then(pkg => {
+    const deps = pkg[key] || {};
+    list.forEach(info => {
+      deps[info.name] = info.version;
+    });
+    pkg[key] = deps;
+    return saveJSON$1(packageFilename, pkg)
+  })
+}
+
 var utils = {
   mkdir: mkdir$1,
   saveJSON: saveJSON$1,
   loadJSON,
   isProduction,
   toInstall: toInstall$1,
-  findMissing: findMissing$1
+  findMissing: findMissing$1,
+  saveVersions: saveVersions$1
 };
 
 const rootFolder = process.env.HAVE || process.env.HOME;
@@ -19668,14 +19684,14 @@ const rootFolder = process.env.HAVE || process.env.HOME;
 const debug = index$2('have-it');
 const path = require$$0$2;
 const fs = require$$0$1;
-const R = index$6;
+const R$1 = index$6;
 const semver = semver$1;
 const la = index$8;
 const is = checkMoreTypes;
 const glob = globAll_1;
 const execa = index$20;
 
-const {mkdir, saveJSON, findMissing} = utils;
+const {mkdir, saveJSON, findMissing, saveVersions} = utils;
 
 debug('using root folder %s', rootFolder);
 
@@ -19725,9 +19741,9 @@ function byVersion (a, b) {
   return semver.compare(a.version, b.version)
 }
 
-const latestVersion = R.pipe(
-  R.sort(byVersion),
-  R.last
+const latestVersion = R$1.pipe(
+  R$1.sort(byVersion),
+  R$1.last
 );
 
 // TODO return found / not found modules
@@ -19736,11 +19752,11 @@ function findModules (names) {
   const searches = names.map(name => `${rootFolder}/*/node_modules/${name}`);
   const folders = glob.sync(searches);
   return Promise.all(folders.map(getVersionSafe))
-    .then(R.filter(R.is(Object)))
-    .then(R.groupBy(R.prop('name')))
-    .then(R.mapObjIndexed(latestVersion))
+    .then(R$1.filter(R$1.is(Object)))
+    .then(R$1.groupBy(R$1.prop('name')))
+    .then(R$1.mapObjIndexed(latestVersion))
     .then(found => {
-      const foundNames = R.keys(found);
+      const foundNames = R$1.keys(found);
       const missing = findMissing(names, foundNames);
       if (is.not.empty(missing)) {
         console.log('You do not have %d module(s): %s',
@@ -19757,9 +19773,9 @@ function findModules (names) {
 }
 
 function print (modules) {
-  const different = R.uniqBy(R.prop('version'))(modules);
+  const different = R$1.uniqBy(R$1.prop('version'))(modules);
   debug('%d different version(s)', different.length);
-  debug(R.project(['version'], different));
+  debug(R$1.project(['version'], different));
 }
 
 function installMain (p) {
@@ -19782,50 +19798,66 @@ function installMain (p) {
       };
       const filename = path.join(destination, 'package.json');
       return saveJSON(filename, pkg)
-    }).then(R.always(p))
+    }).then(R$1.always(p))
 }
 
-function haveModules (list) {
+const saveDependencies = options =>
+  options.includes('-S') || options.includes('--save');
+
+const saveDevDependencies = options =>
+  options.includes('-D') || options.includes('--save-dev');
+
+function haveModules (list, options) {
+  la(is.strings(options), 'expected list of options', options);
+
+  const nameAndVersion = R$1.project(['name', 'version'])(list);
+
   return Promise.all(list.map(installMain))
     .then(() => {
-      console.log('have %d module(s)', list.length);
       list.forEach(p => {
-        console.log(`${p.name}@${p.version}`);
+        console.log(`have ${p.name}@${p.version}`);
       });
+    })
+    .then(() => {
+      if (saveDependencies(options)) {
+        debug('saving as dependencies in package.json');
+        saveVersions(nameAndVersion);
+      } else if (saveDevDependencies(options)) {
+        debug('saving as devDependencies in package.json');
+        saveVersions(nameAndVersion, true);
+      }
     })
 }
 
-function npmInstall (list) {
-  // TODO read flags from command line, like --save and -S
-  return Promise.all(list.map(name =>
-    execa.shell(`npm install ${name}`)
-  )).then(() => {
-    if (list.length) {
-      console.log('npm installed %s', list.join('\n'));
-    }
-  })
+function npmInstall (list, options) {
+  if (is.empty(list)) {
+    return Promise.resolve()
+  }
+  const flags = options.join(' ');
+  const names = list.join(' ');
+  const cmd = `npm install ${flags} ${names}`;
+  console.log(cmd);
+  return execa.shell(cmd)
 }
 
-function installModules ({found, missing}) {
+const installModules = options => ({found, missing}) => {
   la(is.object(found), 'expected found modules object', found);
   la(is.strings(missing), 'expected list of missing names', missing);
-  const list = R.values(found);
+  const list = R$1.values(found);
 
-  return Promise.all([
-    haveModules(list),
-    npmInstall(missing)
-  ])
-}
+  return haveModules(list, options)
+    .then(() => npmInstall(missing, options))
+};
 
-function findAndInstall$1 (names) {
+function findAndInstall$1 (names, options) {
   if (is.string(names)) {
     names = [names];
   }
   la(is.array(names), 'expected list of names to install', names);
 
   return findModules(names)
-    .then(R.tap(print))
-    .then(installModules)
+    .then(R$1.tap(print))
+    .then(installModules(options))
 }
 
 var index = findAndInstall$1;
@@ -19836,6 +19868,7 @@ var index = findAndInstall$1;
 const findAndInstall = index;
 const name = process.argv[2];
 const {toInstall} = utils;
+const R = index$6;
 
 function onError (err) {
   console.error(err);
@@ -19848,8 +19881,10 @@ if (!name) {
     .then(findAndInstall)
     .catch(onError);
 } else {
-  console.log('have-it %s', name);
-  findAndInstall(name)
+  const isOption = s => s.startsWith('-');
+  const [options, names] = R.partition(isOption, process.argv.slice(2));
+  console.log('have-it %s', names.join(' '));
+  findAndInstall(names, options)
     .catch(onError);
 }
 

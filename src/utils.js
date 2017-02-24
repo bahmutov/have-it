@@ -45,9 +45,10 @@ function isProduction () {
   return process.env.NODE_ENV === 'production'
 }
 
+const packageFilename = path.join(process.cwd(), 'package.json')
+
 function toInstall () {
-  const filename = path.join(process.cwd(), 'package.json')
-  return loadJSON(filename).then(pkg => {
+  return loadJSON(packageFilename).then(pkg => {
     const deps = Object.keys(pkg.dependencies || {})
     const devDeps = Object.keys(pkg.devDependencies || {})
     return isProduction() ? deps : concat(deps, devDeps)
@@ -60,11 +61,26 @@ function findMissing (names, found) {
   return difference(names, found)
 }
 
+function saveVersions (list, dev) {
+  la(is.array(list), 'missing list to save')
+
+  const key = dev ? 'devDependencies' : 'dependencies'
+  return loadJSON(packageFilename).then(pkg => {
+    const deps = pkg[key] || {}
+    list.forEach(info => {
+      deps[info.name] = info.version
+    })
+    pkg[key] = deps
+    return saveJSON(packageFilename, pkg)
+  })
+}
+
 module.exports = {
   mkdir,
   saveJSON,
   loadJSON,
   isProduction,
   toInstall,
-  findMissing
+  findMissing,
+  saveVersions
 }

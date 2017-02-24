@@ -1,6 +1,9 @@
+'use strict'
+
 const findAndInstall = require('..')
 const name = process.argv[2]
 const {toInstall} = require('../src/utils')
+const R = require('ramda')
 
 function onError (err) {
   console.error(err)
@@ -13,7 +16,9 @@ if (!name) {
     .then(findAndInstall)
     .catch(onError)
 } else {
-  console.log('have-it %s', name)
-  findAndInstall(name)
+  const isOption = s => s.startsWith('-')
+  const [options, names] = R.partition(isOption, process.argv.slice(2))
+  console.log('have-it %s', names.join(' '))
+  findAndInstall(names, options)
     .catch(onError)
 }

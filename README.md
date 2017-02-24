@@ -83,7 +83,7 @@ module loader.
 
 ## Big missing features
 
-* [ ] [#8](https://github.com/bahmutov/have-it/issues/8)
+* [x] [#8](https://github.com/bahmutov/have-it/issues/8)
   save installed name version in `package.json`
 * [ ] [#9](https://github.com/bahmutov/have-it/issues/9)
   respect `package.json` versions when installing

@@ -12,7 +12,7 @@ const is = require('check-more-types')
 const glob = require('glob-all')
 const execa = require('execa')
 
-const {mkdir, saveJSON, findMissing} = require('./utils')
+const {mkdir, saveJSON, findMissing, saveVersions} = require('./utils')
 
 debug('using root folder %s', rootFolder)
 
@@ -122,39 +122,55 @@ function installMain (p) {
     }).then(R.always(p))
 }
 
-function haveModules (list) {
+const saveDependencies = options =>
+  options.includes('-S') || options.includes('--save')
+
+const saveDevDependencies = options =>
+  options.includes('-D') || options.includes('--save-dev')
+
+function haveModules (list, options) {
+  la(is.strings(options), 'expected list of options', options)
+
+  const nameAndVersion = R.project(['name', 'version'])(list)
+
   return Promise.all(list.map(installMain))
     .then(() => {
-      console.log('have %d module(s)', list.length)
       list.forEach(p => {
-        console.log(`${p.name}@${p.version}`)
+        console.log(`have ${p.name}@${p.version}`)
       })
+    })
+    .then(() => {
+      if (saveDependencies(options)) {
+        debug('saving as dependencies in package.json')
+        saveVersions(nameAndVersion)
+      } else if (saveDevDependencies(options)) {
+        debug('saving as devDependencies in package.json')
+        saveVersions(nameAndVersion, true)
+      }
     })
 }
 
-function npmInstall (list) {
-  // TODO read flags from command line, like --save and -S
-  return Promise.all(list.map(name =>
-    execa.shell(`npm install ${name}`)
-  )).then(() => {
-    if (list.length) {
-      console.log('npm installed %s', list.join('\n'))
-    }
-  })
+function npmInstall (list, options) {
+  if (is.empty(list)) {
+    return Promise.resolve()
+  }
+  const flags = options.join(' ')
+  const names = list.join(' ')
+  const cmd = `npm install ${flags} ${names}`
+  console.log(cmd)
+  return execa.shell(cmd)
 }
 
-function installModules ({found, missing}) {
+const installModules = options => ({found, missing}) => {
   la(is.object(found), 'expected found modules object', found)
   la(is.strings(missing), 'expected list of missing names', missing)
   const list = R.values(found)
 
-  return Promise.all([
-    haveModules(list),
-    npmInstall(missing)
-  ])
+  return haveModules(list, options)
+    .then(() => npmInstall(missing, options))
 }
 
-function findAndInstall (names) {
+function findAndInstall (names, options) {
   if (is.string(names)) {
     names = [names]
   }
@@ -162,7 +178,7 @@ function findAndInstall (names) {
 
   return findModules(names)
     .then(R.tap(print))
-    .then(installModules)
+    .then(installModules(options))
 }
 
 module.exports = findAndInstall
