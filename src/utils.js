@@ -1,6 +1,7 @@
 'use strict'
 
 const mkdirp = require('mkdirp')
+const debug = require('debug')('have-it')
 const fs = require('fs')
 const path = require('path')
 const {concat, difference} = require('ramda')
@@ -50,11 +51,20 @@ function isProduction () {
 
 const packageFilename = path.join(process.cwd(), 'package.json')
 
+function withVersion (deps) {
+  la(is.object(deps), 'expected dependencies object', deps)
+  const at = ([name, version]) => `${name}@${version}`
+  return R.toPairs(deps).map(at)
+}
+
 function toInstall () {
   return loadJSON(packageFilename).then(pkg => {
-    const deps = Object.keys(pkg.dependencies || {})
-    const devDeps = Object.keys(pkg.devDependencies || {})
-    return isProduction() ? deps : concat(deps, devDeps)
+    const deps = withVersion(pkg.dependencies || {})
+    const devDeps = withVersion(pkg.devDependencies || {})
+    const selectedDeps = isProduction() ? deps : concat(deps, devDeps)
+    debug('found deps to install in package.json')
+    debug(selectedDeps)
+    return selectedDeps
   })
 }
 

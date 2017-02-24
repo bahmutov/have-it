@@ -186,6 +186,9 @@ const fullInstallName = parsed =>
   parsed.version ? `${parsed.name}@${parsed.version}` : parsed.name
 
 function npmInstall (list, options) {
+  la(is.array(list), 'expected list of modules to npm install', list)
+  la(is.strings(options), 'expected list of CLI options', options)
+
   if (is.empty(list)) {
     return Promise.resolve()
   }
@@ -196,7 +199,7 @@ function npmInstall (list, options) {
   return execa.shell(cmd)
 }
 
-const installModules = options => ({found, missing}) => {
+const installModules = (options = []) => ({found, missing}) => {
   la(is.object(found), 'expected found modules object', found)
   la(is.array(missing), 'expected list of missing names', missing)
 

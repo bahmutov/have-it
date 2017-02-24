@@ -19614,6 +19614,7 @@ mkdirP.sync = function sync (p, opts, made) {
 };
 
 const mkdirp = index$54;
+const debug$3 = index$2('have-it');
 const fs$11 = require$$0$1;
 const path$14 = require$$0$2;
 const {concat: concat$4, difference: difference$3} = index$6;
@@ -19663,11 +19664,20 @@ function isProduction () {
 
 const packageFilename = path$14.join(process.cwd(), 'package.json');
 
+function withVersion (deps) {
+  la$1(is$4.object(deps), 'expected dependencies object', deps);
+  const at = ([name, version]) => `${name}@${version}`;
+  return R$2.toPairs(deps).map(at)
+}
+
 function toInstall$1 () {
   return loadJSON(packageFilename).then(pkg => {
-    const deps = Object.keys(pkg.dependencies || {});
-    const devDeps = Object.keys(pkg.devDependencies || {});
-    return isProduction() ? deps : concat$4(deps, devDeps)
+    const deps = withVersion(pkg.dependencies || {});
+    const devDeps = withVersion(pkg.devDependencies || {});
+    const selectedDeps = isProduction() ? deps : concat$4(deps, devDeps);
+    debug$3('found deps to install in package.json');
+    debug$3(selectedDeps);
+    return selectedDeps
   })
 }
 
@@ -19893,6 +19903,9 @@ const fullInstallName = parsed =>
   parsed.version ? `${parsed.name}@${parsed.version}` : parsed.name;
 
 function npmInstall (list, options) {
+  la(is.array(list), 'expected list of modules to npm install', list);
+  la(is.strings(options), 'expected list of CLI options', options);
+
   if (is.empty(list)) {
     return Promise.resolve()
   }
@@ -19903,7 +19916,7 @@ function npmInstall (list, options) {
   return execa.shell(cmd)
 }
 
-const installModules = options => ({found, missing}) => {
+const installModules = (options = []) => ({found, missing}) => {
   la(is.object(found), 'expected found modules object', found);
   la(is.array(missing), 'expected list of missing names', missing);
 
@@ -19941,6 +19954,7 @@ function onError (err) {
 
 if (!name) {
   // installing all packages from package.json
+  // no CLI options because the list of names in the package.json already
   toInstall()
     .then(findAndInstall)
     .catch(onError);

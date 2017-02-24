@@ -41,12 +41,18 @@ npm uninstall --save lodash
 
 echo "Installing lodash again - NPM install fallback"
 DEBUG=have-it have lodash --save
-echo "Trying to use the program"
+echo "Trying to use the program (expect latest version)"
 node index.js
 
 echo "Installing specific version of lodash"
 DEBUG=have-it HAVE=$HAVE have lodash@3.10.0 --save
-echo "Trying to use the program"
+echo "Trying to use the program (expect lodash 3.10.0)"
+node index.js
+
+echo "Installing specific version from package.json"
+rm -rf node_modules
+DEBUG=have-it HAVE=$HAVE have
+echo "Trying to use the program (expect lodash 3.10.0)"
 node index.js
 
 echo "All done testing have-it in $folder"

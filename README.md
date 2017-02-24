@@ -83,9 +83,12 @@ module loader.
 
 ## Big missing features
 
+Seems all use cases are already implemented: installing a specific version,
+saving version in `package.json`, etc.
+
 * [x] [#8](https://github.com/bahmutov/have-it/issues/8)
   save installed name version in `package.json`
-* [ ] [#9](https://github.com/bahmutov/have-it/issues/9)
+* [x] [#9](https://github.com/bahmutov/have-it/issues/9)
   respect `package.json` versions when installing
 * [x] [#10](https://github.com/bahmutov/have-it/issues/10)
   allow installing specific version from CLI `have lodash@3.0.0`

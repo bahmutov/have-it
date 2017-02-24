@@ -12,6 +12,7 @@ function onError (err) {
 
 if (!name) {
   // installing all packages from package.json
+  // no CLI options because the list of names in the package.json already
   toInstall()
     .then(findAndInstall)
     .catch(onError)
