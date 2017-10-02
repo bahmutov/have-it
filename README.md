@@ -84,7 +84,7 @@ cat node_modules/lodash/package.json
 Having actual dummy module like above works nicely with Node and its
 module loader.
 
-## Big missing features
+## Main features
 
 Seems all use cases are already implemented: installing a specific version,
 saving version in `package.json`, etc.
@@ -95,6 +95,8 @@ saving version in `package.json`, etc.
   respect `package.json` versions when installing
 * [x] [#10](https://github.com/bahmutov/have-it/issues/10)
   allow installing specific version from CLI `have lodash@3.0.0`
+* [x] [#12](https://github.com/bahmutov/have-it/issues/12)
+  make symbolic links for each "bin" entry
 
 ## Related projects
 

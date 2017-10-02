@@ -27,11 +27,21 @@ function getVersion (folder) {
         }
         const json = JSON.parse(s)
         const main = json.main || 'index.js'
-        debug('main %s', main)
+        // debug('main %s', main)
         const withExtension = main.endsWith('index') ? main + '.js' : main
 
         let fullMain = path.isAbsolute(withExtension)
           ? withExtension : path.join(folder, withExtension)
+
+        let resolvedBin
+        if (is.object(json.bin) && is.not.empty(json.bin)) {
+          debug('resolving bin aliases')
+          debug(json.bin)
+          debug('with respect to folder', folder)
+          const toFullBin = (value, key) =>
+            path.join(folder, value)
+          resolvedBin = R.mapObjIndexed(toFullBin, json.bin)
+        }
 
         if (!fs.existsSync(fullMain)) {
           fullMain += '.js'
@@ -41,13 +51,18 @@ function getVersion (folder) {
           const notFound = new Error(`Cannot find main file ${fullMain}`)
           return reject(notFound)
         }
-        return resolve({
+
+        const result = {
           folder: folder,
           filename: packageFilename,
           name: json.name,
           version: json.version,
           main: fullMain
-        })
+        }
+        if (resolvedBin) {
+          result.bin = resolvedBin
+        }
+        return resolve(result)
       })
     } catch (err) {
       reject()
@@ -137,9 +152,31 @@ function installMain (p) {
     // TODO: use real NPM install in this case
     return
   }
-  const destination = path.join(process.cwd(), 'node_modules', p.name)
-  debug('installing', p)
+  const nodeModulesFolder = path.join(process.cwd(), 'node_modules')
+  const destination = path.join(nodeModulesFolder, p.name)
+  debug('installing found module')
+  debug(p)
   debug('as', destination)
+
+  const linkAnyBin = () => {
+    if (p.bin) {
+      debug('linking bin')
+      debug(p.bin)
+      const binFolder = path.join(nodeModulesFolder, '.bin')
+      if (!fs.existsSync(binFolder)) {
+        debug('making .bin folder', binFolder)
+        fs.mkdirSync(binFolder)
+      }
+      const linkBin = (aliasPath, alias) => {
+        const binLink = path.join(binFolder, alias)
+        debug(binLink, '->', aliasPath)
+        fs.symlinkSync(aliasPath, binLink)
+      }
+      R.mapObjIndexed(linkBin, p.bin)
+    } else {
+      debug('nothing to link into .bin')
+    }
+  }
 
   return mkdir(destination)
     .then(() => {
@@ -151,7 +188,9 @@ function installMain (p) {
       }
       const filename = path.join(destination, 'package.json')
       return saveJSON(filename, pkg)
-    }).then(R.always(p))
+    })
+    .then(linkAnyBin)
+    .then(R.always(p))
 }
 
 const saveDependencies = options =>
